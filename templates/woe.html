@@ -5,10 +5,11 @@
 <h1 class="page-title">🏰 War of Emperium Parties</h1>
 
 {% if next_woe %}
-<div class="event-banner">
+<div class="event-banner" {% if next_woe_iso %}data-countdown="{{ next_woe_iso }}"{% endif %}>
   <div class="event-info">
     <div class="event-label">Next WoE</div>
     <div class="event-date">{{ next_woe | fmtdate }}</div>
+    {% if next_woe_iso %}<div class="event-countdown" style="font-size:0.78rem;color:var(--gold);margin-top:0.2rem;"></div>{% endif %}
   </div>
   <div class="att-actions">
     {% if woe_att %}
@@ -19,6 +20,7 @@
       <span class="att-badge-text no-response current-att"><span class="dot"></span>No Response</span>
     {% endif %}
     <form method="post" action="{{ url_for('mark_attendance') }}" style="display:inline;">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <input type="hidden" name="event_type" value="woe">
       <input type="hidden" name="event_date" value="{{ next_woe }}">
       <input type="hidden" name="next" value="woe">

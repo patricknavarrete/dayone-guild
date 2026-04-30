@@ -51,11 +51,13 @@
 
     <div class="approval-actions">
       <form method="post" action="{{ url_for('admin_approve', member_id=m.id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <button type="submit" class="btn btn-green btn-sm w-full" style="width:100%;justify-content:center;">✓ Approve</button>
       </form>
       <button type="button" class="btn btn-red btn-sm toggle-reject" style="width:100%;justify-content:center;">✕ Reject</button>
       <div class="reject-form">
         <form method="post" action="{{ url_for('admin_reject', member_id=m.id) }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <textarea name="reason" class="form-control" placeholder="Reason for rejection..." rows="2" style="font-size:0.8rem;"></textarea>
           <button type="submit" class="btn btn-red btn-sm mt-1" style="width:100%;justify-content:center;margin-top:0.35rem;">Confirm Reject</button>
         </form>

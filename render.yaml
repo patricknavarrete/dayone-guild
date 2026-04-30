@@ -9,7 +9,7 @@ services:
       - key: SECRET_KEY
         generateValue: true
       - key: ADMIN_PASSWORD
-        value: admin1234
+        sync: false
       - key: DATABASE_PATH
         value: /var/data/dayone.db
     disk:

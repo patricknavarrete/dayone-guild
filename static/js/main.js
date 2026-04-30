@@ -60,3 +60,30 @@ setTimeout(() => {
     setTimeout(() => el.remove(), 500);
   });
 }, 4000);
+
+// ── Event countdown timers ────────────────────────────────────────────────────
+function updateCountdowns() {
+  document.querySelectorAll('.event-banner[data-countdown]').forEach(banner => {
+    const target = new Date(banner.dataset.countdown);
+    const display = banner.querySelector('.event-countdown');
+    if (!display) return;
+    const now = new Date();
+    const diff = target - now;
+    if (diff <= 0) {
+      display.textContent = '⚡ Event is starting now!';
+      return;
+    }
+    const d = Math.floor(diff / 86400000);
+    const h = Math.floor((diff % 86400000) / 3600000);
+    const m = Math.floor((diff % 3600000) / 60000);
+    const s = Math.floor((diff % 60000) / 1000);
+    const parts = [];
+    if (d > 0) parts.push(`${d}d`);
+    parts.push(`${String(h).padStart(2,'0')}h ${String(m).padStart(2,'0')}m ${String(s).padStart(2,'0')}s`);
+    display.textContent = `⏱ Starts in: ${parts.join(' ')}`;
+  });
+}
+if (document.querySelector('.event-banner[data-countdown]')) {
+  updateCountdowns();
+  setInterval(updateCountdowns, 1000);
+}

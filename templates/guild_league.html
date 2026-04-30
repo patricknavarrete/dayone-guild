@@ -5,10 +5,11 @@
 <h1 class="page-title">⚔ Guild League Parties</h1>
 
 {% if next_gl %}
-<div class="event-banner">
+<div class="event-banner" {% if next_gl_iso %}data-countdown="{{ next_gl_iso }}"{% endif %}>
   <div class="event-info">
     <div class="event-label">Next Guild League</div>
     <div class="event-date">{{ next_gl | fmtdate }}</div>
+    {% if next_gl_iso %}<div class="event-countdown" style="font-size:0.78rem;color:var(--gold);margin-top:0.2rem;"></div>{% endif %}
   </div>
   <div class="att-actions">
     {% if gl_att %}
@@ -19,6 +20,7 @@
       <span class="att-badge-text no-response current-att"><span class="dot"></span>No Response</span>
     {% endif %}
     <form method="post" action="{{ url_for('mark_attendance') }}" style="display:inline;">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <input type="hidden" name="event_type" value="guild_league">
       <input type="hidden" name="event_date" value="{{ next_gl }}">
       <input type="hidden" name="next" value="guild_league">

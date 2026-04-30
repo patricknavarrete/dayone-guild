@@ -1,11 +1,13 @@
 import os
 import random
+import secrets
 import sqlite3
-from datetime import date, timedelta, datetime
+import time
+from datetime import date, timedelta, datetime, timezone
 from functools import wraps
 from pathlib import Path
 
-from flask import (Flask, flash, g, jsonify, redirect, render_template,
+from flask import (Flask, abort, flash, g, jsonify, redirect, render_template,
                    request, session, url_for)
 from flask_mail import Mail, Message
 from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadSignature
@@ -25,11 +27,40 @@ app.config['MAX_CONTENT_LENGTH'] = MAX_CONTENT_LENGTH
 
 SUPPORT_JOBS = {'High Priest', 'Bard', 'Dancer'}
 
+PHT = timezone(timedelta(hours=8))
+GL_EVENT_HOUR  = 20   # 8 PM PHT — change if your GL starts at a different time
+WOE_EVENT_HOUR = 20   # 8 PM PHT — change if your WoE starts at a different time
+
+# ── Brute-force tracking for admin login ──────────────────────────────────────
+
+_admin_failed: dict[str, list[float]] = {}
+_ADMIN_MAX_ATTEMPTS = 5
+_ADMIN_LOCKOUT_SECS = 300  # 5 minutes
+
+
+def _client_ip() -> str:
+    return request.headers.get('X-Forwarded-For', request.remote_addr or '').split(',')[0].strip()
+
+
+def _admin_is_locked(ip: str) -> bool:
+    now = time.time()
+    attempts = [t for t in _admin_failed.get(ip, []) if now - t < _ADMIN_LOCKOUT_SECS]
+    _admin_failed[ip] = attempts
+    return len(attempts) >= _ADMIN_MAX_ATTEMPTS
+
+
+def _admin_record_failure(ip: str) -> None:
+    _admin_failed.setdefault(ip, []).append(time.time())
+
+
+def _admin_clear(ip: str) -> None:
+    _admin_failed.pop(ip, None)
+
+
 def _setup_uploads():
     data_dir = Path('/data')
     static_uploads = Path(UPLOAD_FOLDER)
     if data_dir.is_dir():
-        # Render persistent disk — redirect uploads there via symlink
         persistent = data_dir / 'uploads'
         persistent.mkdir(parents=True, exist_ok=True)
         if static_uploads.is_symlink():
@@ -63,7 +94,6 @@ mail = Mail(app)
 
 @app.template_filter('fmtdate')
 def fmtdate(d):
-    """Format date as 'Monday, April 30, 2025' (cross-platform)."""
     if not d:
         return ''
     return d.strftime('%A, %B ') + str(d.day) + d.strftime(', %Y')
@@ -71,7 +101,6 @@ def fmtdate(d):
 
 @app.template_filter('fmtdate_noyear')
 def fmtdate_noyear(d):
-    """Format date as 'Monday, April 30'."""
     if not d:
         return ''
     return d.strftime('%A, %B ') + str(d.day)
@@ -79,10 +108,38 @@ def fmtdate_noyear(d):
 
 @app.template_filter('fmtdate_mini')
 def fmtdate_mini(d):
-    """Format date as 'Apr 30'."""
     if not d:
         return ''
     return d.strftime('%b ') + str(d.day)
+
+
+# ── CSRF protection ───────────────────────────────────────────────────────────
+
+def _get_csrf_token() -> str:
+    if 'csrf_token' not in session:
+        session['csrf_token'] = secrets.token_hex(32)
+    return session['csrf_token']
+
+
+@app.context_processor
+def _inject_csrf():
+    return dict(csrf_token=_get_csrf_token)
+
+
+def csrf_protect(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if request.method == 'POST':
+            token = session.get('csrf_token')
+            # Support form POST and JSON (AJAX) requests
+            if request.is_json:
+                form_token = (request.get_json(silent=True) or {}).get('csrf_token')
+            else:
+                form_token = request.form.get('csrf_token')
+            if not token or not form_token or not secrets.compare_digest(token, form_token):
+                abort(403)
+        return f(*args, **kwargs)
+    return decorated
 
 
 # ── Password reset tokens ─────────────────────────────────────────────────────
@@ -103,8 +160,6 @@ def verify_reset_token(token, max_age=3600):
 # ── Database ──────────────────────────────────────────────────────────────────
 
 def get_db():
-    import os
-
     db = getattr(g, '_database', None)
     if db is None:
         os.makedirs(os.path.dirname(DATABASE), exist_ok=True)
@@ -120,16 +175,11 @@ def close_connection(exception):
         db.close()
 
 
-import os
-
 def init_db():
     db = get_db()
-
     schema_path = os.path.join(os.path.dirname(__file__), 'schema.sql')
-
     with open(schema_path, 'r', encoding='utf-8') as f:
         db.executescript(f.read())
-
     db.commit()
 
 
@@ -148,7 +198,7 @@ def save_upload(field_name):
     if not allowed_file(f.filename):
         return None
     ext = f.filename.rsplit('.', 1)[1].lower()
-    unique_name = f"{field_name}_{int(datetime.utcnow().timestamp())}_{random.randint(1000, 9999)}.{ext}"
+    unique_name = f"{field_name}_{int(datetime.now(timezone.utc).timestamp())}_{random.randint(1000, 9999)}.{ext}"
     filepath = os.path.join(app.config['UPLOAD_FOLDER'], unique_name)
     f.save(filepath)
     return f"uploads/{unique_name}"
@@ -159,7 +209,7 @@ def is_support(job):
 
 
 def get_next_event_dates():
-    today = date.today()
+    today = datetime.now(PHT).date()
     gl_next = None
     woe_next = None
     for delta in range(8):
@@ -171,7 +221,16 @@ def get_next_event_dates():
             woe_next = d
         if gl_next and woe_next:
             break
-    return {'gl_next': gl_next, 'woe_next': woe_next}
+    gl_dt = datetime(gl_next.year, gl_next.month, gl_next.day,
+                     GL_EVENT_HOUR, 0, 0, tzinfo=PHT) if gl_next else None
+    woe_dt = datetime(woe_next.year, woe_next.month, woe_next.day,
+                      WOE_EVENT_HOUR, 0, 0, tzinfo=PHT) if woe_next else None
+    return {
+        'gl_next':    gl_next,
+        'woe_next':   woe_next,
+        'gl_dt_iso':  gl_dt.isoformat() if gl_dt else None,
+        'woe_dt_iso': woe_dt.isoformat() if woe_dt else None,
+    }
 
 
 def get_attendance(member_id, event_type, event_date):
@@ -216,23 +275,23 @@ def index():
 
 
 @app.route('/register', methods=['GET', 'POST'])
+@csrf_protect
 def register():
     if request.method == 'POST':
-        # CAPTCHA check
         expected = session.get('captcha_answer')
         provided = request.form.get('captcha', '').strip()
         if str(expected) != provided:
             flash('Wrong answer to the math question.', 'error')
             return redirect(url_for('register'))
 
-        username = request.form.get('username', '').strip()
-        password = request.form.get('password', '').strip()
-        confirm  = request.form.get('confirm_password', '').strip()
-        email    = request.form.get('email', '').strip().lower()
-        name     = request.form.get('name', '').strip()
-        job      = request.form.get('job', '').strip()
+        username  = request.form.get('username', '').strip()
+        password  = request.form.get('password', '').strip()
+        confirm   = request.form.get('confirm_password', '').strip()
+        email     = request.form.get('email', '').strip().lower()
+        name      = request.form.get('name', '').strip()
+        job       = request.form.get('job', '').strip()
         power_raw = request.form.get('power', '0').strip()
-        notes    = request.form.get('notes', '').strip()
+        notes     = request.form.get('notes', '').strip()
 
         if not all([username, password, confirm, email, name, job, power_raw]):
             flash('Please fill in all required fields.', 'error')
@@ -261,10 +320,14 @@ def register():
             flash('An account with that email already exists.', 'error')
             return redirect(url_for('register'))
 
-        photo_path  = save_upload('photo')
-        power_ss    = save_upload('power_screenshot')
-        equip_ss    = save_upload('equipment_screenshot')
-        quasi_ss    = save_upload('quasi_stats_screenshot')
+        if db.execute("SELECT id FROM members WHERE LOWER(name)=?", (name.lower(),)).fetchone():
+            flash('A member with that character name already exists.', 'error')
+            return redirect(url_for('register'))
+
+        photo_path = save_upload('photo')
+        power_ss   = save_upload('power_screenshot')
+        equip_ss   = save_upload('equipment_screenshot')
+        quasi_ss   = save_upload('quasi_stats_screenshot')
 
         db.execute(
             """INSERT INTO members
@@ -285,6 +348,7 @@ def register():
 
 
 @app.route('/login', methods=['GET', 'POST'])
+@csrf_protect
 def login():
     if 'member_id' in session:
         return redirect(url_for('roster'))
@@ -311,12 +375,12 @@ def login():
 
 @app.route('/logout')
 def logout():
-    session.pop('member_id', None)
-    session.pop('member_name', None)
+    session.clear()
     return redirect(url_for('login'))
 
 
 @app.route('/forgot-password', methods=['GET', 'POST'])
+@csrf_protect
 def forgot_password():
     if request.method == 'POST':
         email = request.form.get('email', '').strip().lower()
@@ -345,13 +409,13 @@ def forgot_password():
                 except Exception:
                     flash('Could not send email. Please check mail settings or contact the admin.', 'error')
                     return render_template('forgot_password.html')
-        # Always show the same message to prevent email enumeration
         flash('If that email is registered and approved, a reset link has been sent.', 'info')
         return redirect(url_for('login'))
     return render_template('forgot_password.html')
 
 
 @app.route('/reset-password/<token>', methods=['GET', 'POST'])
+@csrf_protect
 def reset_password(token):
     email = verify_reset_token(token)
     if not email:
@@ -415,7 +479,7 @@ def roster():
     ).fetchall()
     events = get_next_event_dates()
     mid = session['member_id']
-    gl_att = get_attendance(mid, 'guild_league', events['gl_next'])
+    gl_att  = get_attendance(mid, 'guild_league', events['gl_next'])
     woe_att = get_attendance(mid, 'woe', events['woe_next'])
     return render_template('roster.html', members=members, events=events,
                            gl_att=gl_att, woe_att=woe_att)
@@ -425,10 +489,10 @@ def roster():
 @login_required
 def guild_league():
     db = get_db()
-    events = get_next_event_dates()
+    events  = get_next_event_dates()
     next_gl = events['gl_next']
-    mid = session['member_id']
-    gl_att = get_attendance(mid, 'guild_league', next_gl)
+    mid     = session['member_id']
+    gl_att  = get_attendance(mid, 'guild_league', next_gl)
 
     parties_raw = db.execute(
         "SELECT * FROM gl_parties ORDER BY is_sub ASC, sort_order ASC, id ASC"
@@ -452,17 +516,18 @@ def guild_league():
         parties.append({'id': p['id'], 'name': p['name'], 'is_sub': p['is_sub'], 'members': members})
 
     return render_template('guild_league.html', parties=parties,
-                           next_gl=next_gl, gl_att=gl_att)
+                           next_gl=next_gl, gl_att=gl_att,
+                           next_gl_iso=events['gl_dt_iso'])
 
 
 @app.route('/woe')
 @login_required
 def woe():
     db = get_db()
-    events = get_next_event_dates()
+    events   = get_next_event_dates()
     next_woe = events['woe_next']
-    mid = session['member_id']
-    woe_att = get_attendance(mid, 'woe', next_woe)
+    mid      = session['member_id']
+    woe_att  = get_attendance(mid, 'woe', next_woe)
 
     parties_raw = db.execute(
         "SELECT * FROM woe_parties ORDER BY sort_order ASC, id ASC"
@@ -486,27 +551,36 @@ def woe():
         parties.append({'id': p['id'], 'name': p['name'], 'members': members})
 
     return render_template('woe.html', parties=parties,
-                           next_woe=next_woe, woe_att=woe_att)
+                           next_woe=next_woe, woe_att=woe_att,
+                           next_woe_iso=events['woe_dt_iso'])
 
 
 @app.route('/profile', methods=['GET', 'POST'])
 @login_required
+@csrf_protect
 def profile():
-    db = get_db()
+    db  = get_db()
     mid = session['member_id']
 
     if request.method == 'POST':
         action = request.form.get('action', '')
 
         if action == 'update_free':
-            name = request.form.get('name', '').strip()
-            notes = request.form.get('notes', '').strip()
+            name      = request.form.get('name', '').strip()
+            notes     = request.form.get('notes', '').strip()
             photo_path = save_upload('photo')
-            old_pw = request.form.get('old_password', '').strip()
-            new_pw = request.form.get('new_password', '').strip()
+            old_pw    = request.form.get('old_password', '').strip()
+            new_pw    = request.form.get('new_password', '').strip()
 
             updates = {}
             if name:
+                # Check duplicate name (exclude self)
+                existing = db.execute(
+                    "SELECT id FROM members WHERE LOWER(name)=? AND id!=?", (name.lower(), mid)
+                ).fetchone()
+                if existing:
+                    flash('That character name is already taken.', 'error')
+                    return redirect(url_for('profile'))
                 updates['name'] = name
             updates['notes'] = notes
             if photo_path:
@@ -530,7 +604,7 @@ def profile():
 
         elif action == 'update_power':
             new_power = request.form.get('power', '').strip()
-            new_ss = save_upload('power_screenshot')
+            new_ss    = save_upload('power_screenshot')
             if not new_power or not new_ss:
                 flash('Power update requires both a new power value and screenshot.', 'error')
                 return redirect(url_for('profile'))
@@ -619,7 +693,7 @@ def profile():
 
         return redirect(url_for('profile'))
 
-    member = db.execute("SELECT * FROM members WHERE id=?", (mid,)).fetchone()
+    member  = db.execute("SELECT * FROM members WHERE id=?", (mid,)).fetchone()
     pending = db.execute(
         "SELECT * FROM pending_updates WHERE member_id=? AND status='pending'", (mid,)
     ).fetchall()
@@ -632,14 +706,35 @@ def profile():
 
 @app.route('/attendance', methods=['POST'])
 @login_required
+@csrf_protect
 def mark_attendance():
     event_type = request.form.get('event_type')
     event_date = request.form.get('event_date')
-    status = request.form.get('status')
-    next_page = request.form.get('next', 'roster')
+    status     = request.form.get('status')
+    next_page  = request.form.get('next', 'roster')
 
     if event_type not in ('guild_league', 'woe') or status not in ('attending', 'absent'):
         flash('Invalid attendance parameters.', 'error')
+        return redirect(url_for('roster'))
+
+    # Validate event_date is a real date and matches the correct weekday
+    try:
+        parsed = date.fromisoformat(event_date)
+    except (ValueError, TypeError):
+        flash('Invalid event date.', 'error')
+        return redirect(url_for('roster'))
+
+    wd = parsed.weekday()
+    if event_type == 'guild_league' and wd not in (1, 3):
+        flash('Invalid event date.', 'error')
+        return redirect(url_for('roster'))
+    if event_type == 'woe' and wd != 6:
+        flash('Invalid event date.', 'error')
+        return redirect(url_for('roster'))
+
+    today = datetime.now(PHT).date()
+    if abs((parsed - today).days) > 14:
+        flash('Event date is out of range.', 'error')
         return redirect(url_for('roster'))
 
     db = get_db()
@@ -660,14 +755,22 @@ def mark_attendance():
 # ── Admin Login ───────────────────────────────────────────────────────────────
 
 @app.route('/admin/login', methods=['GET', 'POST'])
+@csrf_protect
 def admin_login():
     if session.get('is_admin'):
         return redirect(url_for('admin_index'))
     if request.method == 'POST':
+        ip = _client_ip()
+        if _admin_is_locked(ip):
+            flash('Too many failed attempts. Try again in 5 minutes.', 'error')
+            return render_template('admin/login.html')
         if request.form.get('password', '') == ADMIN_PASSWORD:
+            _admin_clear(ip)
             session['is_admin'] = True
             return redirect(url_for('admin_index'))
-        flash('Incorrect admin password.', 'error')
+        _admin_record_failure(ip)
+        remaining = _ADMIN_MAX_ATTEMPTS - len(_admin_failed.get(ip, []))
+        flash(f'Incorrect admin password. {max(remaining, 0)} attempt(s) remaining.', 'error')
     return render_template('admin/login.html')
 
 
@@ -683,8 +786,8 @@ def admin_logout():
 @admin_required
 def admin_index():
     db = get_db()
-    pm = db.execute("SELECT COUNT(*) as c FROM members WHERE status='pending'").fetchone()['c']
-    pu = db.execute("SELECT COUNT(*) as c FROM pending_updates WHERE status='pending'").fetchone()['c']
+    pm    = db.execute("SELECT COUNT(*) as c FROM members WHERE status='pending'").fetchone()['c']
+    pu    = db.execute("SELECT COUNT(*) as c FROM pending_updates WHERE status='pending'").fetchone()['c']
     total = db.execute("SELECT COUNT(*) as c FROM members WHERE status='approved'").fetchone()['c']
     return render_template('admin/index.html', pending_members=pm, pending_updates=pu, total_members=total)
 
@@ -693,20 +796,25 @@ def admin_index():
 
 @app.route('/admin/officers', methods=['GET', 'POST'])
 @admin_required
+@csrf_protect
 def admin_officers():
     db = get_db()
     if request.method == 'POST':
         member_id = request.form.get('member_id', '').strip()
-        rank = request.form.get('rank', '').strip()
+        rank      = request.form.get('rank', '').strip()
         if not member_id or rank not in RANK_ORDER:
             flash('Invalid selection.', 'error')
         else:
-            db.execute(
-                "INSERT INTO officers (member_id, rank) VALUES (?, ?)",
-                (int(member_id), rank)
-            )
-            db.commit()
-            flash('Officer added.', 'success')
+            mid_int = int(member_id)
+            if db.execute("SELECT id FROM officers WHERE member_id=?", (mid_int,)).fetchone():
+                flash('This member is already an officer.', 'error')
+            else:
+                db.execute(
+                    "INSERT INTO officers (member_id, rank) VALUES (?, ?)",
+                    (mid_int, rank)
+                )
+                db.commit()
+                flash('Officer added.', 'success')
         return redirect(url_for('admin_officers'))
 
     rows = db.execute(
@@ -721,15 +829,21 @@ def admin_officers():
         if row['rank'] in grouped:
             grouped[row['rank']].append(row)
 
-    all_members = db.execute(
-        "SELECT id, name, job FROM members WHERE status='approved' ORDER BY name"
-    ).fetchall()
+    # Exclude members already assigned as officers
+    officer_ids = {row['id'] for row in db.execute("SELECT member_id as id FROM officers").fetchall()}
+    all_members = [
+        m for m in db.execute(
+            "SELECT id, name, job FROM members WHERE status='approved' ORDER BY name"
+        ).fetchall()
+        if m['id'] not in officer_ids
+    ]
     return render_template('admin/officers.html', grouped=grouped,
                            rank_order=RANK_ORDER, all_members=all_members)
 
 
 @app.route('/admin/officers/remove/<int:officer_id>', methods=['POST'])
 @admin_required
+@csrf_protect
 def admin_officers_remove(officer_id):
     db = get_db()
     db.execute("DELETE FROM officers WHERE id=?", (officer_id,))
@@ -755,6 +869,7 @@ def admin_members():
 
 @app.route('/admin/members/delete/<int:member_id>', methods=['POST'])
 @admin_required
+@csrf_protect
 def admin_delete_member(member_id):
     db = get_db()
     db.execute("DELETE FROM attendance WHERE member_id=?", (member_id,))
@@ -782,6 +897,7 @@ def admin_approvals():
 
 @app.route('/admin/approve/<int:member_id>', methods=['POST'])
 @admin_required
+@csrf_protect
 def admin_approve(member_id):
     db = get_db()
     db.execute("UPDATE members SET status='approved', rejection_reason=NULL WHERE id=?", (member_id,))
@@ -792,6 +908,7 @@ def admin_approve(member_id):
 
 @app.route('/admin/reject/<int:member_id>', methods=['POST'])
 @admin_required
+@csrf_protect
 def admin_reject(member_id):
     reason = request.form.get('reason', '').strip() or 'No reason provided.'
     db = get_db()
@@ -819,6 +936,7 @@ def admin_updates():
 
 @app.route('/admin/updates/approve/<int:update_id>', methods=['POST'])
 @admin_required
+@csrf_protect
 def admin_approve_update(update_id):
     db = get_db()
     u = db.execute("SELECT * FROM pending_updates WHERE id=?", (update_id,)).fetchone()
@@ -853,6 +971,7 @@ def admin_approve_update(update_id):
 
 @app.route('/admin/updates/reject/<int:update_id>', methods=['POST'])
 @admin_required
+@csrf_protect
 def admin_reject_update(update_id):
     reason = request.form.get('reason', '').strip() or 'No reason provided.'
     db = get_db()
@@ -871,8 +990,8 @@ def admin_reject_update(update_id):
 @admin_required
 def admin_attendance():
     db = get_db()
-    events = get_next_event_dates()
-    next_gl = events['gl_next']
+    events   = get_next_event_dates()
+    next_gl  = events['gl_next']
     next_woe = events['woe_next']
 
     def build_list(event_type, event_date):
@@ -888,14 +1007,14 @@ def admin_attendance():
         result = [{'id': m['id'], 'name': m['name'], 'job': m['job'],
                    'status': att_map.get(m['id'])} for m in members]
         att = sum(1 for r in result if r['status'] == 'attending')
-        ab = sum(1 for r in result if r['status'] == 'absent')
-        nr = sum(1 for r in result if not r['status'])
+        ab  = sum(1 for r in result if r['status'] == 'absent')
+        nr  = sum(1 for r in result if not r['status'])
         return result, att, ab, nr
 
-    gl_list, gl_att, gl_abs, gl_nr = build_list('guild_league', next_gl)
+    gl_list, gl_att, gl_abs, gl_nr    = build_list('guild_league', next_gl)
     woe_list, woe_att, woe_abs, woe_nr = build_list('woe', next_woe)
 
-    today = date.today()
+    today = datetime.now(PHT).date()
     past = []
     for i in range(1, 29):
         d = today - timedelta(days=i)
@@ -931,8 +1050,8 @@ def admin_attendance_history():
     result = [{'id': m['id'], 'name': m['name'], 'job': m['job'],
                'status': att_map.get(m['id'])} for m in members]
     att = sum(1 for r in result if r['status'] == 'attending')
-    ab = sum(1 for r in result if r['status'] == 'absent')
-    nr = sum(1 for r in result if not r['status'])
+    ab  = sum(1 for r in result if r['status'] == 'absent')
+    nr  = sum(1 for r in result if not r['status'])
     return render_template('admin/attendance_history.html',
                            members=result, event_type=event_type,
                            event_date=event_date, att=att, ab=ab, nr=nr)
@@ -996,8 +1115,9 @@ def admin_gl_parties():
 
 @app.route('/admin/parties/guild-league/create', methods=['POST'])
 @admin_required
+@csrf_protect
 def admin_gl_create_party():
-    name = request.form.get('name', '').strip()
+    name   = request.form.get('name', '').strip()
     is_sub = 1 if request.form.get('is_sub') else 0
     if not name:
         flash('Party name required.', 'error')
@@ -1010,6 +1130,7 @@ def admin_gl_create_party():
 
 @app.route('/admin/parties/guild-league/delete/<int:party_id>', methods=['POST'])
 @admin_required
+@csrf_protect
 def admin_gl_delete_party(party_id):
     db = get_db()
     db.execute("DELETE FROM gl_party_members WHERE party_id=?", (party_id,))
@@ -1021,9 +1142,9 @@ def admin_gl_delete_party(party_id):
 @app.route('/admin/parties/guild-league/move', methods=['POST'])
 @admin_required
 def admin_gl_move():
-    data = request.get_json()
+    data      = request.get_json()
     member_id = data.get('member_id')
-    party_id = data.get('party_id')
+    party_id  = data.get('party_id')
     if not member_id:
         return jsonify({'error': 'member_id required'}), 400
     db = get_db()
@@ -1037,6 +1158,7 @@ def admin_gl_move():
 
 @app.route('/admin/parties/guild-league/auto', methods=['POST'])
 @admin_required
+@csrf_protect
 def admin_gl_auto():
     db = get_db()
     db.execute("DELETE FROM gl_party_members")
@@ -1051,8 +1173,8 @@ def admin_gl_auto():
         flash('No approved members to distribute.', 'error')
         return redirect(url_for('admin_gl_parties'))
 
-    main_pool = members[:40]
-    sub_pool = members[40:]
+    main_pool  = members[:40]
+    sub_pool   = members[40:]
 
     main_chunks = [main_pool[i:i+5] for i in range(0, len(main_pool), 5)]
     if len(main_chunks) > 8:
@@ -1087,6 +1209,7 @@ def admin_gl_auto():
 
 @app.route('/admin/parties/guild-league/reset', methods=['POST'])
 @admin_required
+@csrf_protect
 def admin_gl_reset():
     db = get_db()
     db.execute("DELETE FROM gl_party_members")
@@ -1110,6 +1233,7 @@ def admin_woe_parties():
 
 @app.route('/admin/parties/woe/create', methods=['POST'])
 @admin_required
+@csrf_protect
 def admin_woe_create_party():
     name = request.form.get('name', '').strip()
     if not name:
@@ -1123,6 +1247,7 @@ def admin_woe_create_party():
 
 @app.route('/admin/parties/woe/delete/<int:party_id>', methods=['POST'])
 @admin_required
+@csrf_protect
 def admin_woe_delete_party(party_id):
     db = get_db()
     db.execute("DELETE FROM woe_party_members WHERE party_id=?", (party_id,))
@@ -1134,9 +1259,9 @@ def admin_woe_delete_party(party_id):
 @app.route('/admin/parties/woe/move', methods=['POST'])
 @admin_required
 def admin_woe_move():
-    data = request.get_json()
+    data      = request.get_json()
     member_id = data.get('member_id')
-    party_id = data.get('party_id')
+    party_id  = data.get('party_id')
     if not member_id:
         return jsonify({'error': 'member_id required'}), 400
     db = get_db()
@@ -1150,6 +1275,7 @@ def admin_woe_move():
 
 @app.route('/admin/parties/woe/auto', methods=['POST'])
 @admin_required
+@csrf_protect
 def admin_woe_auto():
     db = get_db()
     db.execute("DELETE FROM woe_party_members")
@@ -1165,7 +1291,7 @@ def admin_woe_auto():
         flash('No approved members to distribute.', 'error')
         return redirect(url_for('admin_woe_parties'))
 
-    chunks = [members[i:i+5] for i in range(0, len(members), 5)]
+    chunks  = [members[i:i+5] for i in range(0, len(members), 5)]
     created = []
     for i, chunk in enumerate(chunks):
         cur = db.execute("INSERT INTO woe_parties (name, sort_order) VALUES (?,?)", (f"Party {i+1}", i))
@@ -1185,6 +1311,7 @@ def admin_woe_auto():
 
 @app.route('/admin/parties/woe/reset', methods=['POST'])
 @admin_required
+@csrf_protect
 def admin_woe_reset():
     db = get_db()
     db.execute("DELETE FROM woe_party_members")
@@ -1197,41 +1324,47 @@ def admin_woe_reset():
 # ── Support enforcement ───────────────────────────────────────────────────────
 
 def _enforce_support(db, party_table, member_table):
-    parties = db.execute(f"SELECT id FROM {party_table}").fetchall()
-    party_data = {}
-    for p in parties:
-        rows = db.execute(
-            f"""SELECT m.id, m.job FROM {member_table} pm
-                JOIN members m ON m.id=pm.member_id WHERE pm.party_id=?""",
-            (p['id'],)
-        ).fetchall()
-        party_data[p['id']] = [dict(r) for r in rows]
+    for _ in range(10):  # up to 10 passes until stable
+        parties = db.execute(f"SELECT id FROM {party_table}").fetchall()
+        party_data = {}
+        for p in parties:
+            rows = db.execute(
+                f"""SELECT m.id, m.job FROM {member_table} pm
+                    JOIN members m ON m.id=pm.member_id WHERE pm.party_id=?""",
+                (p['id'],)
+            ).fetchall()
+            party_data[p['id']] = [dict(r) for r in rows]
 
-    for pid, members in party_data.items():
-        if any(is_support(m['job']) for m in members):
-            continue
-        if not members:
-            continue
-        for other_pid, other_members in party_data.items():
-            if other_pid == pid:
+        swapped = False
+        for pid, members in party_data.items():
+            if any(is_support(m['job']) for m in members):
                 continue
-            supports = [m for m in other_members if is_support(m['job'])]
-            if len(supports) < 2:
+            if not members:
                 continue
-            non_sup = next((m for m in members if not is_support(m['job'])), None)
-            if not non_sup:
-                continue
-            sup = supports[0]
-            db.execute(
-                f"UPDATE {member_table} SET party_id=? WHERE member_id=? AND party_id=?",
-                (pid, sup['id'], other_pid)
-            )
-            db.execute(
-                f"UPDATE {member_table} SET party_id=? WHERE member_id=? AND party_id=?",
-                (other_pid, non_sup['id'], pid)
-            )
-            party_data[pid] = [m for m in members if m['id'] != non_sup['id']] + [sup]
-            party_data[other_pid] = [m for m in other_members if m['id'] != sup['id']] + [non_sup]
+            for other_pid, other_members in party_data.items():
+                if other_pid == pid:
+                    continue
+                supports = [m for m in other_members if is_support(m['job'])]
+                if len(supports) < 2:
+                    continue
+                non_sup = next((m for m in members if not is_support(m['job'])), None)
+                if not non_sup:
+                    continue
+                sup = supports[0]
+                db.execute(
+                    f"UPDATE {member_table} SET party_id=? WHERE member_id=? AND party_id=?",
+                    (pid, sup['id'], other_pid)
+                )
+                db.execute(
+                    f"UPDATE {member_table} SET party_id=? WHERE member_id=? AND party_id=?",
+                    (other_pid, non_sup['id'], pid)
+                )
+                party_data[pid] = [m for m in members if m['id'] != non_sup['id']] + [sup]
+                party_data[other_pid] = [m for m in other_members if m['id'] != sup['id']] + [non_sup]
+                swapped = True
+                break
+
+        if not swapped:
             break
 
 

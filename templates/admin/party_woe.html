@@ -16,14 +16,17 @@
 <!-- Action bar -->
 <div style="display:flex;flex-wrap:wrap;gap:0.75rem;margin-bottom:1.5rem;align-items:center;">
   <form method="post" action="{{ url_for('admin_woe_auto') }}" onsubmit="return confirm('This will clear existing WoE parties and randomly distribute all members. Continue?')">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <button type="submit" class="btn btn-gold">🎲 Auto-Distribute (Random)</button>
   </form>
   <form method="post" action="{{ url_for('admin_woe_reset') }}" onsubmit="return confirm('This will clear ALL WoE parties. Continue?')">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <button type="submit" class="btn btn-outline">🗑 Reset All</button>
   </form>
 
   <!-- Create party -->
   <form method="post" action="{{ url_for('admin_woe_create_party') }}" style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <input type="text" name="name" class="form-control" placeholder="New party name" style="width:180px;" required>
     <button type="submit" class="btn btn-outline btn-sm">+ Create</button>
   </form>
@@ -64,6 +67,7 @@
               <span style="font-size:0.72rem;color:var(--text-muted);">{{ party.members|length }}/5</span>
               <form method="post" action="{{ url_for('admin_woe_delete_party', party_id=party.id) }}"
                     onsubmit="return confirm('Delete {{ party.name }}?')" style="margin:0;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <button type="submit" class="btn btn-red btn-sm" style="padding:0.15rem 0.4rem;font-size:0.7rem;">✕</button>
               </form>
             </div>

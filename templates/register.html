@@ -26,6 +26,7 @@
     {% endwith %}
 
     <form method="post" action="{{ url_for('register') }}" enctype="multipart/form-data">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <div class="form-section">
         <h2>Account</h2>
         <div class="form-row">
@@ -76,6 +77,8 @@
               <option>Rogue</option>
               <option>MasterSmith</option>
               <option>Biochemist</option>
+              <option>Summoner</option>
+              <option>Apprentice</option>
             </select>
           </div>
         </div>

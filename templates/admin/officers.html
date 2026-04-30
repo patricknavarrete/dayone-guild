@@ -10,6 +10,7 @@
 <div class="form-section" style="margin-bottom:1.5rem;">
   <h2 style="margin-bottom:1rem;">Add Officer</h2>
   <form method="post" action="{{ url_for('admin_officers') }}" style="display:flex;gap:0.75rem;flex-wrap:wrap;align-items:flex-end;">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <div class="form-group" style="margin:0;flex:1;min-width:180px;">
       <label class="form-label">Member</label>
       <select name="member_id" class="form-control" required>
@@ -58,6 +59,7 @@
           <span style="font-size:0.8rem;color:var(--text-muted);">{{ m.job }}</span>
         </div>
         <form method="post" action="{{ url_for('admin_officers_remove', officer_id=m.id) }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <button type="submit" class="btn btn-red btn-sm" onclick="return confirm('Remove {{ m.name }} from {{ rank }}?')">✕ Remove</button>
         </form>
       </div>

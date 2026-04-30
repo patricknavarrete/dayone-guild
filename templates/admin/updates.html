@@ -1,0 +1,111 @@
+{% extends 'admin/base.html' %}
+{% block title %}Update Requests — DayOne Admin{% endblock %}
+
+{% block content %}
+<div class="section-header">
+  <h1 class="page-title" style="margin:0;">Update Requests</h1>
+  <span class="badge badge-pending">{{ updates|length }} pending</span>
+</div>
+
+{% if updates %}
+  {% for u in updates %}
+  <div class="approval-card" style="grid-template-columns:1fr auto;">
+    <div>
+      <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:0.5rem;flex-wrap:wrap;">
+        <h3 style="margin:0;">{{ u.member_name }}</h3>
+        <span style="font-size:0.78rem;color:var(--text-muted);">@{{ u.username }}</span>
+        <span class="badge badge-pending">{{ u.field_name|upper }} UPDATE</span>
+        <span style="font-size:0.75rem;color:var(--text-muted);">{{ u.created_at[:10] }}</span>
+      </div>
+
+      {% if u.field_name == 'power' %}
+        <div class="img-compare" style="max-width:600px;">
+          <div>
+            <div class="label" style="color:var(--text-muted);font-size:0.72rem;margin-bottom:0.35rem;">CURRENT POWER</div>
+            <div class="power-value" style="font-size:1.5rem;margin-bottom:0.5rem;">{{ "{:,}".format(u.old_value|int) if u.old_value else '—' }}</div>
+            {% if u.old_screenshot %}
+              <img src="{{ url_for('static', filename=u.old_screenshot) }}" class="screenshot-thumb lightbox-trigger" alt="Old power" style="max-width:200px;">
+            {% else %}
+              <span class="text-muted" style="font-size:0.8rem;">No screenshot</span>
+            {% endif %}
+          </div>
+          <div>
+            <div class="label" style="color:var(--green);font-size:0.72rem;margin-bottom:0.35rem;">NEW POWER</div>
+            <div class="power-value" style="font-size:1.5rem;margin-bottom:0.5rem;color:var(--green);">{{ "{:,}".format(u.new_value|int) if u.new_value else '—' }}</div>
+            {% if u.new_screenshot %}
+              <img src="{{ url_for('static', filename=u.new_screenshot) }}" class="screenshot-thumb lightbox-trigger" alt="New power" style="max-width:200px;border-color:var(--green);">
+            {% endif %}
+          </div>
+        </div>
+
+      {% elif u.field_name == 'equipment' %}
+        <div class="img-compare" style="max-width:600px;">
+          <div>
+            <div class="label" style="color:var(--text-muted);font-size:0.72rem;margin-bottom:0.35rem;">CURRENT EQUIPMENT</div>
+            {% if u.old_screenshot %}
+              <img src="{{ url_for('static', filename=u.old_screenshot) }}" class="screenshot-thumb lightbox-trigger" alt="Old equipment" style="max-width:200px;">
+            {% else %}
+              <span class="text-muted" style="font-size:0.8rem;">No current screenshot</span>
+            {% endif %}
+          </div>
+          <div>
+            <div class="label" style="color:var(--green);font-size:0.72rem;margin-bottom:0.35rem;">NEW EQUIPMENT</div>
+            {% if u.new_screenshot %}
+              <img src="{{ url_for('static', filename=u.new_screenshot) }}" class="screenshot-thumb lightbox-trigger" alt="New equipment" style="max-width:200px;border-color:var(--green);">
+            {% endif %}
+          </div>
+        </div>
+
+      {% elif u.field_name == 'quasi_stats' %}
+        <div class="img-compare" style="max-width:600px;">
+          <div>
+            <div class="label" style="color:var(--text-muted);font-size:0.72rem;margin-bottom:0.35rem;">CURRENT QUASI STATS</div>
+            {% if u.old_screenshot %}
+              <img src="{{ url_for('static', filename=u.old_screenshot) }}" class="screenshot-thumb lightbox-trigger" alt="Old quasi stats" style="max-width:200px;">
+            {% else %}
+              <span class="text-muted" style="font-size:0.8rem;">No current screenshot</span>
+            {% endif %}
+          </div>
+          <div>
+            <div class="label" style="color:var(--green);font-size:0.72rem;margin-bottom:0.35rem;">NEW QUASI STATS</div>
+            {% if u.new_screenshot %}
+              <img src="{{ url_for('static', filename=u.new_screenshot) }}" class="screenshot-thumb lightbox-trigger" alt="New quasi stats" style="max-width:200px;border-color:var(--green);">
+            {% endif %}
+          </div>
+        </div>
+
+      {% elif u.field_name == 'job' %}
+        <div style="display:flex;gap:1.5rem;align-items:center;margin-top:0.5rem;">
+          <div>
+            <div style="font-size:0.72rem;color:var(--text-muted);text-transform:uppercase;">Current Job</div>
+            <div style="font-size:1.1rem;font-weight:600;">{{ u.old_value or '—' }}</div>
+          </div>
+          <div style="color:var(--text-muted);font-size:1.2rem;">→</div>
+          <div>
+            <div style="font-size:0.72rem;color:var(--green);text-transform:uppercase;">New Job</div>
+            <div style="font-size:1.1rem;font-weight:600;color:var(--green);">{{ u.new_value or '—' }}</div>
+          </div>
+        </div>
+      {% endif %}
+    </div>
+
+    <div class="approval-actions admin-actions">
+      <form method="post" action="{{ url_for('admin_approve_update', update_id=u.id) }}">
+        <button type="submit" class="btn btn-green btn-sm" style="width:100%;justify-content:center;">✓ Approve</button>
+      </form>
+      <button type="button" class="btn btn-red btn-sm toggle-reject" style="width:100%;justify-content:center;">✕ Reject</button>
+      <div class="reject-form">
+        <form method="post" action="{{ url_for('admin_reject_update', update_id=u.id) }}">
+          <textarea name="reason" class="form-control" placeholder="Reason..." rows="2" style="font-size:0.8rem;"></textarea>
+          <button type="submit" class="btn btn-red btn-sm" style="width:100%;justify-content:center;margin-top:0.35rem;">Confirm Reject</button>
+        </form>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+{% else %}
+  <div class="empty-state">
+    <p>No pending update requests.</p>
+  </div>
+{% endif %}
+{% endblock %}

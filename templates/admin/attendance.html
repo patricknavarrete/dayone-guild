@@ -1,0 +1,129 @@
+{% extends 'admin/base.html' %}
+{% block title %}Attendance Overview — DayOne Admin{% endblock %}
+
+{% block content %}
+<h1 class="page-title">Attendance Overview</h1>
+
+<!-- Tabs -->
+<div class="tabs">
+  <button class="tab-btn active" data-group="att" data-target="tab-gl">
+    ⚔ Guild League{% if next_gl %} — {{ next_gl | fmtdate_mini }}{% endif %}
+  </button>
+  <button class="tab-btn" data-group="att" data-target="tab-woe">
+    🏰 WoE{% if next_woe %} — {{ next_woe | fmtdate_mini }}{% endif %}
+  </button>
+  <button class="tab-btn" data-group="att" data-target="tab-history">
+    📅 History
+  </button>
+</div>
+
+<!-- GL Tab -->
+<div id="tab-gl" class="tab-content active" data-group="att">
+  {% if next_gl %}
+    <h2 style="font-size:1.3rem;margin-bottom:0.75rem;">Guild League — {{ next_gl | fmtdate }}</h2>
+    <div class="stats-bar">
+      <span class="stat-chip attending">✓ Attending: {{ gl_att }}</span>
+      <span class="stat-chip absent">✕ Absent: {{ gl_abs }}</span>
+      <span class="stat-chip no-response">— No Response: {{ gl_nr }}</span>
+    </div>
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Job</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for m in gl_list %}
+        <tr>
+          <td>{{ m.name }}</td>
+          <td>{{ m.job }}</td>
+          <td>
+            {% if m.status == 'attending' %}
+              <span class="att-badge-text attending"><span class="dot"></span>Attending</span>
+            {% elif m.status == 'absent' %}
+              <span class="att-badge-text absent"><span class="dot"></span>Absent</span>
+            {% else %}
+              <span class="att-badge-text no-response"><span class="dot"></span>No Response</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="3" class="text-muted" style="text-align:center;padding:1rem;">No members found.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <div class="empty-state"><p>No upcoming Guild League found.</p></div>
+  {% endif %}
+</div>
+
+<!-- WoE Tab -->
+<div id="tab-woe" class="tab-content" data-group="att">
+  {% if next_woe %}
+    <h2 style="font-size:1.3rem;margin-bottom:0.75rem;">WoE — {{ next_woe | fmtdate }}</h2>
+    <div class="stats-bar">
+      <span class="stat-chip attending">✓ Attending: {{ woe_att }}</span>
+      <span class="stat-chip absent">✕ Absent: {{ woe_abs }}</span>
+      <span class="stat-chip no-response">— No Response: {{ woe_nr }}</span>
+    </div>
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Job</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for m in woe_list %}
+        <tr>
+          <td>{{ m.name }}</td>
+          <td>{{ m.job }}</td>
+          <td>
+            {% if m.status == 'attending' %}
+              <span class="att-badge-text attending"><span class="dot"></span>Attending</span>
+            {% elif m.status == 'absent' %}
+              <span class="att-badge-text absent"><span class="dot"></span>Absent</span>
+            {% else %}
+              <span class="att-badge-text no-response"><span class="dot"></span>No Response</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="3" class="text-muted" style="text-align:center;padding:1rem;">No members found.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <div class="empty-state"><p>No upcoming WoE found.</p></div>
+  {% endif %}
+</div>
+
+<!-- History Tab -->
+<div id="tab-history" class="tab-content" data-group="att">
+  <h2 style="font-size:1.3rem;margin-bottom:0.75rem;">Recent Events (Last 4 Weeks)</h2>
+  {% if past_events %}
+    <table class="data-table">
+      <thead>
+        <tr><th>Date</th><th>Event</th><th></th></tr>
+      </thead>
+      <tbody>
+        {% for event_type, event_date in past_events %}
+        <tr>
+          <td>{{ event_date | fmtdate }}</td>
+          <td>{{ 'Guild League' if event_type == 'guild_league' else 'WoE' }}</td>
+          <td>
+            <a href="{{ url_for('admin_attendance_history', type=event_type, date=event_date) }}"
+               class="btn btn-outline btn-sm">View →</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <div class="empty-state"><p>No past events recorded yet.</p></div>
+  {% endif %}
+</div>
+{% endblock %}

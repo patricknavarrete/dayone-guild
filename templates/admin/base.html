@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Admin — DayOne{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  {% block head %}{% endblock %}
+</head>
+<body>
+  <nav class="admin-navbar">
+    <div class="brand">Day<span>One</span> <span style="color:var(--text-muted);font-size:0.8rem;vertical-align:middle;">ADMIN</span></div>
+    <ul class="admin-nav-links">
+      <li><a href="{{ url_for('admin_index') }}">Dashboard</a></li>
+      <li><a href="{{ url_for('admin_approvals') }}">Approvals</a></li>
+      <li><a href="{{ url_for('admin_updates') }}">Updates</a></li>
+      <li><a href="{{ url_for('admin_attendance') }}">Attendance</a></li>
+      <li><a href="{{ url_for('admin_gl_parties') }}">GL Parties</a></li>
+      <li><a href="{{ url_for('admin_woe_parties') }}">WoE Parties</a></li>
+      <li><a href="{{ url_for('roster') }}" style="color:var(--text-muted);">← Site</a></li>
+      <li><a href="{{ url_for('admin_logout') }}" class="logout-link">Logout</a></li>
+    </ul>
+  </nav>
+
+  <div class="container">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for category, message in messages %}
+        <div class="alert alert-{{ category }}">{{ message }}</div>
+      {% endfor %}
+    {% endwith %}
+    {% block content %}{% endblock %}
+  </div>
+
+  <!-- Image lightbox -->
+  <div id="img-modal" class="modal-overlay">
+    <div class="modal" style="text-align:center;">
+      <button id="img-modal-close" class="btn btn-outline btn-sm" style="margin-bottom:0.75rem;">✕ Close</button>
+      <img id="img-modal-img" src="" alt="Screenshot" style="max-width:100%;border-radius:8px;">
+    </div>
+  </div>
+
+  <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

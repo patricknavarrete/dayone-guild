@@ -1,0 +1,48 @@
+{% extends 'admin/base.html' %}
+{% block title %}Attendance History — DayOne Admin{% endblock %}
+
+{% block content %}
+<div style="margin-bottom:1rem;">
+  <a href="{{ url_for('admin_attendance') }}" class="btn btn-outline btn-sm">← Back to Attendance</a>
+</div>
+
+<h1 class="page-title">
+  {{ 'Guild League' if event_type == 'guild_league' else 'WoE' }} —
+  {{ event_date }}
+</h1>
+
+<div class="stats-bar">
+  <span class="stat-chip attending">✓ Attending: {{ att }}</span>
+  <span class="stat-chip absent">✕ Absent: {{ ab }}</span>
+  <span class="stat-chip no-response">— No Response: {{ nr }}</span>
+</div>
+
+<table class="data-table" style="margin-top:1rem;">
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Job</th>
+      <th>Status</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for m in members %}
+    <tr>
+      <td>{{ m.name }}</td>
+      <td>{{ m.job }}</td>
+      <td>
+        {% if m.status == 'attending' %}
+          <span class="att-badge-text attending"><span class="dot"></span>Attending</span>
+        {% elif m.status == 'absent' %}
+          <span class="att-badge-text absent"><span class="dot"></span>Absent</span>
+        {% else %}
+          <span class="att-badge-text no-response"><span class="dot"></span>No Response</span>
+        {% endif %}
+      </td>
+    </tr>
+    {% else %}
+    <tr><td colspan="3" class="text-muted" style="text-align:center;padding:1rem;">No members found.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

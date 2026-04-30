@@ -1,0 +1,51 @@
+{% extends 'admin/base.html' %}
+{% block title %}Admin Dashboard — DayOne{% endblock %}
+
+{% block content %}
+<h1 class="page-title">Admin Dashboard</h1>
+
+<div class="dashboard-grid">
+  <div class="dashboard-stat {% if pending_members > 0 %}alert-stat{% endif %}">
+    <div class="stat-number">{{ pending_members }}</div>
+    <div class="stat-label">Pending Registrations</div>
+  </div>
+  <div class="dashboard-stat {% if pending_updates > 0 %}alert-stat{% endif %}">
+    <div class="stat-number">{{ pending_updates }}</div>
+    <div class="stat-label">Pending Updates</div>
+  </div>
+  <div class="dashboard-stat">
+    <div class="stat-number">{{ total_members }}</div>
+    <div class="stat-label">Approved Members</div>
+  </div>
+</div>
+
+<h2 style="font-size:1.3rem;margin-bottom:1rem;">Quick Actions</h2>
+<div class="quick-links">
+  <a href="{{ url_for('admin_approvals') }}" class="quick-link-card">
+    ✅ Member Approvals
+    {% if pending_members > 0 %}<span class="badge badge-pending">{{ pending_members }}</span>{% endif %}
+  </a>
+  <a href="{{ url_for('admin_updates') }}" class="quick-link-card">
+    🔄 Update Requests
+    {% if pending_updates > 0 %}<span class="badge badge-pending">{{ pending_updates }}</span>{% endif %}
+  </a>
+  <a href="{{ url_for('admin_attendance') }}" class="quick-link-card">
+    📋 Attendance Overview
+  </a>
+  <a href="{{ url_for('admin_gl_parties') }}" class="quick-link-card">
+    ⚔ Guild League Parties
+  </a>
+  <a href="{{ url_for('admin_woe_parties') }}" class="quick-link-card">
+    🏰 WoE Parties
+  </a>
+</div>
+
+<div style="margin-top:2rem;padding:1rem;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);">
+  <h3 style="font-size:1rem;margin-bottom:0.5rem;color:var(--text-muted);">Admin Info</h3>
+  <ul style="list-style:none;font-size:0.85rem;color:var(--text-muted);line-height:2;">
+    <li>Guild League events: every <strong style="color:var(--text);">Tuesday</strong> and <strong style="color:var(--text);">Thursday</strong></li>
+    <li>WoE events: every <strong style="color:var(--text);">Sunday</strong></li>
+    <li>Support jobs (highlighted in parties): Priest, High Priest, Archbishop, Bard, Clown, Minstrel, Dancer, Gypsy, Wanderer, Soul Linker</li>
+  </ul>
+</div>
+{% endblock %}

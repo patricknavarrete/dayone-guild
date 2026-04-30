@@ -1,0 +1,71 @@
+{% extends 'admin/base.html' %}
+{% block title %}Member Approvals — DayOne Admin{% endblock %}
+
+{% block content %}
+<div class="section-header">
+  <h1 class="page-title" style="margin:0;">Member Approvals</h1>
+  <span class="badge badge-pending">{{ pending|length }} pending</span>
+</div>
+
+{% if pending %}
+  {% for m in pending %}
+  <div class="approval-card">
+    {% if m.photo_path %}
+      <img src="{{ url_for('static', filename=m.photo_path) }}" alt="{{ m.name }}" class="lightbox-trigger">
+    {% else %}
+      <div class="no-img">⚔</div>
+    {% endif %}
+
+    <div>
+      <h3>{{ m.name }}</h3>
+      <div style="font-size:0.78rem;color:var(--text-muted);margin-bottom:0.25rem;">@{{ m.username }}</div>
+      <div class="meta">
+        <span><strong>Job:</strong> {{ m.job }}</span>
+        <span><strong>Power:</strong> <span class="power-value">{{ "{:,}".format(m.power) }}</span></span>
+        <span><strong>Registered:</strong> {{ m.created_at[:10] }}</span>
+      </div>
+      {% if m.notes %}
+        <div style="font-size:0.82rem;color:var(--text-muted);margin-top:0.35rem;font-style:italic;">"{{ m.notes }}"</div>
+      {% endif %}
+      <div style="display:flex;gap:0.75rem;flex-wrap:wrap;margin-top:0.75rem;">
+        {% if m.power_screenshot_path %}
+          <div>
+            <div style="font-size:0.7rem;color:var(--text-muted);margin-bottom:0.25rem;">POWER SS</div>
+            <img src="{{ url_for('static', filename=m.power_screenshot_path) }}" class="screenshot-thumb lightbox-trigger" alt="Power" style="max-width:160px;">
+          </div>
+        {% endif %}
+        {% if m.equipment_screenshot_path %}
+          <div>
+            <div style="font-size:0.7rem;color:var(--text-muted);margin-bottom:0.25rem;">EQUIPMENT SS</div>
+            <img src="{{ url_for('static', filename=m.equipment_screenshot_path) }}" class="screenshot-thumb lightbox-trigger" alt="Equipment" style="max-width:160px;">
+          </div>
+        {% endif %}
+        {% if m.quasi_stats_screenshot_path %}
+          <div>
+            <div style="font-size:0.7rem;color:var(--text-muted);margin-bottom:0.25rem;">QUASI STATS SS</div>
+            <img src="{{ url_for('static', filename=m.quasi_stats_screenshot_path) }}" class="screenshot-thumb lightbox-trigger" alt="Quasi Stats" style="max-width:160px;">
+          </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="approval-actions">
+      <form method="post" action="{{ url_for('admin_approve', member_id=m.id) }}">
+        <button type="submit" class="btn btn-green btn-sm w-full" style="width:100%;justify-content:center;">✓ Approve</button>
+      </form>
+      <button type="button" class="btn btn-red btn-sm toggle-reject" style="width:100%;justify-content:center;">✕ Reject</button>
+      <div class="reject-form">
+        <form method="post" action="{{ url_for('admin_reject', member_id=m.id) }}">
+          <textarea name="reason" class="form-control" placeholder="Reason for rejection..." rows="2" style="font-size:0.8rem;"></textarea>
+          <button type="submit" class="btn btn-red btn-sm mt-1" style="width:100%;justify-content:center;margin-top:0.35rem;">Confirm Reject</button>
+        </form>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+{% else %}
+  <div class="empty-state">
+    <p>No pending registrations.</p>
+  </div>
+{% endif %}
+{% endblock %}

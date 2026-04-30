@@ -1,0 +1,86 @@
+{% extends 'base.html' %}
+{% block title %}Roster — DayOne{% endblock %}
+
+{% block content %}
+<h1 class="page-title">Guild Roster</h1>
+
+<!-- Attendance banners -->
+{% if events.gl_next %}
+<div class="event-banner">
+  <div class="event-info">
+    <div class="event-label">⚔ Guild League</div>
+    <div class="event-date">{{ events.gl_next | fmtdate_noyear }}</div>
+  </div>
+  <div class="att-actions">
+    {% if gl_att %}
+      <span class="att-badge-text {{ gl_att }} current-att">
+        <span class="dot"></span>{{ gl_att|title }}
+      </span>
+    {% else %}
+      <span class="att-badge-text no-response current-att"><span class="dot"></span>No Response</span>
+    {% endif %}
+    <form method="post" action="{{ url_for('mark_attendance') }}" style="display:inline;">
+      <input type="hidden" name="event_type" value="guild_league">
+      <input type="hidden" name="event_date" value="{{ events.gl_next }}">
+      <input type="hidden" name="next" value="roster">
+      <button type="submit" name="status" value="attending" class="btn btn-green btn-sm">✓ Attend</button>
+      <button type="submit" name="status" value="absent" class="btn btn-red btn-sm">✕ Absent</button>
+    </form>
+  </div>
+</div>
+{% endif %}
+
+{% if events.woe_next %}
+<div class="event-banner">
+  <div class="event-info">
+    <div class="event-label">🏰 War of Emperium</div>
+    <div class="event-date">{{ events.woe_next | fmtdate_noyear }}</div>
+  </div>
+  <div class="att-actions">
+    {% if woe_att %}
+      <span class="att-badge-text {{ woe_att }} current-att">
+        <span class="dot"></span>{{ woe_att|title }}
+      </span>
+    {% else %}
+      <span class="att-badge-text no-response current-att"><span class="dot"></span>No Response</span>
+    {% endif %}
+    <form method="post" action="{{ url_for('mark_attendance') }}" style="display:inline;">
+      <input type="hidden" name="event_type" value="woe">
+      <input type="hidden" name="event_date" value="{{ events.woe_next }}">
+      <input type="hidden" name="next" value="roster">
+      <button type="submit" name="status" value="attending" class="btn btn-green btn-sm">✓ Attend</button>
+      <button type="submit" name="status" value="absent" class="btn btn-red btn-sm">✕ Absent</button>
+    </form>
+  </div>
+</div>
+{% endif %}
+
+{% if members %}
+  <p class="text-muted mb-2" style="font-size:0.85rem;">{{ members|length }} approved member{{ 's' if members|length != 1 else '' }}</p>
+  <div class="card-grid">
+    {% for m in members %}
+    <div class="member-card">
+      <div class="photo-wrap">
+        {% if m.photo_path %}
+          <img src="{{ url_for('static', filename=m.photo_path) }}" alt="{{ m.name }}">
+        {% else %}
+          <div class="no-photo">⚔</div>
+        {% endif %}
+      </div>
+      <div class="card-body">
+        <h3>{{ m.name }}</h3>
+        <div class="job-tag">{{ m.job }}</div>
+        {% if m.notes %}
+          <div class="notes">{{ m.notes }}</div>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="empty-state">
+    <p>No approved members yet. Be the first to join!</p>
+    <a href="{{ url_for('register') }}" class="btn btn-primary mt-2">Register</a>
+  </div>
+{% endif %}
+{% endblock %}

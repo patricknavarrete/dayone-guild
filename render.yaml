@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: dayone-guild
+    env: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: sh -c "mkdir -p /var/data/uploads && rm -rf static/uploads && ln -sfn /var/data/uploads static/uploads && exec gunicorn app:app --bind 0.0.0.0:$PORT --workers 2 --timeout 120"
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true
+      - key: ADMIN_PASSWORD
+        value: admin1234
+      - key: DATABASE_PATH
+        value: /var/data/dayone.db
+    disk:
+      name: dayone-data
+      mountPath: /var/data
+      sizeGB: 1

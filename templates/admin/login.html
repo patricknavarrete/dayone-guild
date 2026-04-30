@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Login — DayOne</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+  <div class="auth-page">
+    <div class="auth-card">
+      <div class="logo">
+        <div class="hexagon">D1</div>
+        <span class="guild-name" style="color:var(--gold);">DayOne</span>
+      </div>
+      <h2 style="color:var(--absent);">Admin Access</h2>
+
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for category, message in messages %}
+          <div class="alert alert-{{ category }}">{{ message }}</div>
+        {% endfor %}
+      {% endwith %}
+
+      <form method="post" action="{{ url_for('admin_login') }}">
+        <div class="form-group">
+          <label class="form-label">Admin Password</label>
+          <input type="password" name="password" class="form-control" placeholder="••••••••" required autofocus>
+        </div>
+        <button type="submit" class="btn btn-primary w-full btn-lg" style="width:100%;justify-content:center;background:var(--gold);color:#000;">Enter Admin Panel</button>
+      </form>
+
+      <div style="text-align:center;margin-top:1rem;">
+        <a href="{{ url_for('login') }}" style="font-size:0.82rem;color:var(--text-muted);">← Back to member login</a>
+      </div>
+    </div>
+  </div>
+  <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>

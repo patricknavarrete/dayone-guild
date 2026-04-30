@@ -1,0 +1,188 @@
+{% extends 'admin/base.html' %}
+{% block title %}GL Party Management — DayOne Admin{% endblock %}
+
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="section-header">
+  <h1 class="page-title" style="margin:0;">⚔ Guild League Party Management</h1>
+  {% if next_gl %}
+    <span style="font-size:0.85rem;color:var(--text-muted);">Next GL: <strong style="color:var(--text);">{{ next_gl | fmtdate_noyear }}</strong></span>
+  {% endif %}
+</div>
+
+<!-- Action bar -->
+<div style="display:flex;flex-wrap:wrap;gap:0.75rem;margin-bottom:1.5rem;align-items:center;">
+  <form method="post" action="{{ url_for('admin_gl_auto') }}" onsubmit="return confirm('This will clear existing parties and auto-distribute all members. Continue?')">
+    <button type="submit" class="btn btn-gold">⚡ Auto-Distribute</button>
+  </form>
+  <form method="post" action="{{ url_for('admin_gl_reset') }}" onsubmit="return confirm('This will clear ALL Guild League parties. Continue?')">
+    <button type="submit" class="btn btn-outline">🗑 Reset All</button>
+  </form>
+
+  <!-- Create party -->
+  <form method="post" action="{{ url_for('admin_gl_create_party') }}" style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;">
+    <input type="text" name="name" class="form-control" placeholder="New party name" style="width:180px;" required>
+    <label style="display:flex;align-items:center;gap:0.35rem;font-size:0.82rem;color:var(--text-muted);cursor:pointer;">
+      <input type="checkbox" name="is_sub" value="1"> Sub Party
+    </label>
+    <button type="submit" class="btn btn-outline btn-sm">+ Create</button>
+  </form>
+</div>
+
+<div class="party-mgmt-layout">
+  <!-- Unassigned pool -->
+  <div class="unassigned-pool">
+    <h3>Unassigned <span style="font-size:0.8rem;color:var(--text-muted);">({{ unassigned|length }})</span></h3>
+    <div class="sortable-list" id="pool-unassigned" data-party-id="">
+      {% for m in unassigned %}
+      <div class="member-chip {% if m.is_support %}support-chip{% endif %}" data-member-id="{{ m.id }}">
+        <span class="drag-handle">⣿</span>
+        <div style="flex:1;min-width:0;">
+          <div class="chip-name">{{ m.name }}</div>
+          <div style="display:flex;gap:0.5rem;">
+            <span class="chip-job">{{ m.job }}</span>
+            <span class="chip-power">{{ "{:,}".format(m.power) }}</span>
+          </div>
+        </div>
+        <div class="att-badge {% if m.attendance == 'attending' %}attending{% elif m.attendance == 'absent' %}absent{% else %}no-response{% endif %}"></div>
+      </div>
+      {% else %}
+      <div style="text-align:center;padding:1rem;color:var(--text-muted);font-size:0.8rem;">All members assigned</div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Party cards -->
+  <div>
+    {% set main_parties = parties | selectattr('is_sub', 'equalto', 0) | list %}
+    {% set sub_parties  = parties | selectattr('is_sub', 'equalto', 1) | list %}
+
+    {% if main_parties %}
+      <h2 style="font-size:1.2rem;color:var(--gold);margin-bottom:0.75rem;">Main Parties</h2>
+      <div class="admin-parties-grid" id="gl-main-grid">
+        {% for party in main_parties %}
+        <div class="admin-party-card">
+          <div class="party-header">
+            <h3>{{ party.name }}</h3>
+            <div style="display:flex;align-items:center;gap:0.5rem;">
+              <span style="font-size:0.72rem;color:var(--text-muted);">{{ party.members|length }}/5</span>
+              <form method="post" action="{{ url_for('admin_gl_delete_party', party_id=party.id) }}"
+                    onsubmit="return confirm('Delete {{ party.name }}?')" style="margin:0;">
+                <button type="submit" class="btn btn-red btn-sm" style="padding:0.15rem 0.4rem;font-size:0.7rem;">✕</button>
+              </form>
+            </div>
+          </div>
+          <div class="sortable-list" data-party-id="{{ party.id }}">
+            {% for m in party.members %}
+            <div class="member-chip {% if m.is_support %}support-chip{% endif %}" data-member-id="{{ m.id }}">
+              <span class="drag-handle">⣿</span>
+              <div style="flex:1;min-width:0;">
+                <div class="chip-name">{{ m.name }}</div>
+                <div style="display:flex;gap:0.5rem;">
+                  <span class="chip-job">{{ m.job }}</span>
+                  <span class="chip-power">{{ "{:,}".format(m.power) }}</span>
+                </div>
+              </div>
+              <div class="att-badge {% if m.attendance == 'attending' %}attending{% elif m.attendance == 'absent' %}absent{% else %}no-response{% endif %}"></div>
+            </div>
+            {% else %}
+            <div class="empty-drop" style="padding:0.75rem;text-align:center;color:var(--text-muted);font-size:0.78rem;border:1px dashed var(--border);border-radius:var(--radius);margin:0.25rem;">Drop members here</div>
+            {% endfor %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    {% if sub_parties %}
+      <div class="section-divider">Sub Parties</div>
+      <div class="admin-parties-grid">
+        {% for party in sub_parties %}
+        <div class="admin-party-card" style="border-color:#3a3a3a;">
+          <div class="party-header" style="background:linear-gradient(90deg,#111,#161616);">
+            <h3 style="color:var(--text-muted);">{{ party.name }}</h3>
+            <div style="display:flex;align-items:center;gap:0.5rem;">
+              <span class="sub-label">SUB</span>
+              <span style="font-size:0.72rem;color:var(--text-muted);">{{ party.members|length }}/5</span>
+              <form method="post" action="{{ url_for('admin_gl_delete_party', party_id=party.id) }}"
+                    onsubmit="return confirm('Delete {{ party.name }}?')" style="margin:0;">
+                <button type="submit" class="btn btn-red btn-sm" style="padding:0.15rem 0.4rem;font-size:0.7rem;">✕</button>
+              </form>
+            </div>
+          </div>
+          <div class="sortable-list" data-party-id="{{ party.id }}">
+            {% for m in party.members %}
+            <div class="member-chip {% if m.is_support %}support-chip{% endif %}" data-member-id="{{ m.id }}">
+              <span class="drag-handle">⣿</span>
+              <div style="flex:1;min-width:0;">
+                <div class="chip-name">{{ m.name }}</div>
+                <div style="display:flex;gap:0.5rem;">
+                  <span class="chip-job">{{ m.job }}</span>
+                  <span class="chip-power">{{ "{:,}".format(m.power) }}</span>
+                </div>
+              </div>
+              <div class="att-badge {% if m.attendance == 'attending' %}attending{% elif m.attendance == 'absent' %}absent{% else %}no-response{% endif %}"></div>
+            </div>
+            {% else %}
+            <div class="empty-drop" style="padding:0.75rem;text-align:center;color:var(--text-muted);font-size:0.78rem;border:1px dashed var(--border);border-radius:var(--radius);margin:0.25rem;">Drop members here</div>
+            {% endfor %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    {% if not parties %}
+      <div class="empty-state">
+        <p>No parties yet. Use Auto-Distribute or create parties manually.</p>
+      </div>
+    {% endif %}
+  </div>
+</div>
+
+<div style="margin-top:1rem;font-size:0.78rem;color:var(--text-muted);">
+  <span style="border-left:3px solid var(--gold);padding-left:6px;">Gold border chip = Support job (Bard/Priest)</span> &nbsp;&nbsp;
+  <span class="att-badge attending" style="display:inline-block;vertical-align:middle;"></span> Attending &nbsp;
+  <span class="att-badge absent" style="display:inline-block;vertical-align:middle;"></span> Absent &nbsp;
+  <span class="att-badge no-response" style="display:inline-block;vertical-align:middle;"></span> No Response
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const MOVE_URL = "{{ url_for('admin_gl_move') }}";
+
+  function moveRequest(memberId, partyId) {
+    fetch(MOVE_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ member_id: parseInt(memberId), party_id: partyId ? parseInt(partyId) : null })
+    }).catch(err => console.error('Move failed:', err));
+  }
+
+  function initSortables() {
+    const lists = document.querySelectorAll('.sortable-list');
+    lists.forEach(el => {
+      Sortable.create(el, {
+        group: { name: 'gl-members', pull: true, put: true },
+        animation: 150,
+        handle: '.drag-handle',
+        ghostClass: 'sortable-ghost',
+        chosenClass: 'sortable-chosen',
+        onAdd(evt) {
+          const memberId = evt.item.dataset.memberId;
+          const partyId = evt.to.dataset.partyId || null;
+          moveRequest(memberId, partyId);
+          // Remove empty-drop placeholder
+          evt.to.querySelectorAll('.empty-drop').forEach(e => e.remove());
+        }
+      });
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded', initSortables);
+</script>
+{% endblock %}

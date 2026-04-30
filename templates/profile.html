@@ -1,0 +1,229 @@
+{% extends 'base.html' %}
+{% block title %}My Profile — DayOne{% endblock %}
+
+{% block content %}
+<h1 class="page-title">My Profile</h1>
+
+<!-- Profile header -->
+<div class="profile-header">
+  {% if member.photo_path %}
+    <img src="{{ url_for('static', filename=member.photo_path) }}" alt="{{ member.name }}" class="profile-photo lightbox-trigger">
+  {% else %}
+    <div class="profile-photo-placeholder">⚔</div>
+  {% endif %}
+  <div class="profile-info">
+    <h1>{{ member.name }}</h1>
+    <div style="color:var(--gold);font-size:0.9rem;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;">{{ member.job }}</div>
+    <div class="stat-row">
+      <div class="stat-item">
+        <div class="stat-label">Battle Power</div>
+        <div class="stat-value power-value">{{ "{:,}".format(member.power) }}</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-label">Username</div>
+        <div class="stat-value">{{ member.username }}</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-label">Status</div>
+        <div class="stat-value"><span class="badge badge-approved">Approved</span></div>
+      </div>
+    </div>
+    {% if member.notes %}
+      <div style="margin-top:0.75rem;font-size:0.875rem;color:var(--text-muted);">{{ member.notes }}</div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Pending updates notice -->
+{% if pending %}
+<div class="alert alert-warning">
+  You have {{ pending|length }} pending update{{ 's' if pending|length != 1 else '' }} awaiting admin approval.
+  {% for p in pending %}
+    <br>— <strong>{{ p.field_name|title }}</strong>: awaiting review
+    {% if p.field_name == 'power' %} ({{ p.old_value }} → {{ p.new_value }}){% endif %}
+    {% if p.field_name == 'job' %} ({{ p.old_value }} → {{ p.new_value }}){% endif %}
+  {% endfor %}
+</div>
+{% endif %}
+
+<!-- Rejected updates -->
+{% for r in rejected %}
+<div class="alert alert-error">
+  <strong>{{ r.field_name|title }} update rejected:</strong> {{ r.rejection_reason or 'No reason given.' }}
+  {% if r.field_name == 'power' %} — Requested change: {{ r.old_value }} → {{ r.new_value }}{% endif %}
+</div>
+{% endfor %}
+
+<!-- Screenshots -->
+{% if member.power_screenshot_path or member.equipment_screenshot_path or member.quasi_stats_screenshot_path %}
+<div class="form-section">
+  <h2>Screenshots</h2>
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:1rem;">
+    {% if member.power_screenshot_path %}
+    <div>
+      <div class="label" style="font-size:0.72rem;color:var(--text-muted);text-transform:uppercase;margin-bottom:0.35rem;">Power Screenshot</div>
+      <img src="{{ url_for('static', filename=member.power_screenshot_path) }}" class="screenshot-thumb lightbox-trigger" alt="Power">
+    </div>
+    {% endif %}
+    {% if member.equipment_screenshot_path %}
+    <div>
+      <div class="label" style="font-size:0.72rem;color:var(--text-muted);text-transform:uppercase;margin-bottom:0.35rem;">Equipment Screenshot</div>
+      <img src="{{ url_for('static', filename=member.equipment_screenshot_path) }}" class="screenshot-thumb lightbox-trigger" alt="Equipment">
+    </div>
+    {% endif %}
+    {% if member.quasi_stats_screenshot_path %}
+    <div>
+      <div class="label" style="font-size:0.72rem;color:var(--text-muted);text-transform:uppercase;margin-bottom:0.35rem;">Quasi Stats Screenshot</div>
+      <img src="{{ url_for('static', filename=member.quasi_stats_screenshot_path) }}" class="screenshot-thumb lightbox-trigger" alt="Quasi Stats">
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+
+<!-- ── FREE UPDATES ── -->
+<div class="form-section">
+  <h2>Update Profile</h2>
+  <p class="text-muted mb-2" style="font-size:0.85rem;">Changes here take effect immediately without admin approval.</p>
+  <form method="post" action="{{ url_for('profile') }}" enctype="multipart/form-data">
+    <input type="hidden" name="action" value="update_free">
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Display Name</label>
+        <input type="text" name="name" class="form-control" value="{{ member.name }}" placeholder="Character name">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Character Photo</label>
+        <input type="file" name="photo" class="form-control" accept="image/*">
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Notes</label>
+      <textarea name="notes" class="form-control">{{ member.notes or '' }}</textarea>
+    </div>
+    <hr class="divider">
+    <p class="text-muted mb-2" style="font-size:0.85rem;">Change password (leave blank to keep current).</p>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Current Password</label>
+        <input type="password" name="old_password" class="form-control" placeholder="••••••••">
+      </div>
+      <div class="form-group">
+        <label class="form-label">New Password</label>
+        <input type="password" name="new_password" class="form-control" placeholder="••••••••">
+      </div>
+    </div>
+    <button type="submit" class="btn btn-primary">Save Changes</button>
+  </form>
+</div>
+
+<!-- ── ADMIN-APPROVED UPDATES ── -->
+<div class="form-section">
+  <h2>Updates Requiring Admin Approval</h2>
+  <p class="text-muted mb-3" style="font-size:0.85rem;">These changes must be reviewed before they take effect. Your current values remain until approved.</p>
+
+  <!-- Power update -->
+  <div style="border:1px solid var(--border);border-radius:var(--radius);padding:1rem;margin-bottom:1rem;">
+    <h3 style="font-size:1.1rem;margin-bottom:0.75rem;">Battle Power</h3>
+    <p style="font-size:0.85rem;color:var(--text-muted);margin-bottom:0.75rem;">Current: <strong class="power-value">{{ "{:,}".format(member.power) }}</strong>
+      {% for p in pending %}{% if p.field_name == 'power' %}
+        <span class="pending-badge" style="margin-left:0.5rem;">⏳ {{ p.new_value }} pending</span>
+      {% endif %}{% endfor %}
+    </p>
+    {% set has_power_pending = pending | selectattr('field_name', 'equalto', 'power') | list %}
+    {% if not has_power_pending %}
+    <form method="post" action="{{ url_for('profile') }}" enctype="multipart/form-data">
+      <input type="hidden" name="action" value="update_power">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">New Power</label>
+          <input type="number" name="power" class="form-control" placeholder="e.g. 95000" min="0">
+        </div>
+        <div class="form-group">
+          <label class="form-label">New Power Screenshot <span style="color:var(--red)">*</span></label>
+          <input type="file" name="power_screenshot" class="form-control" accept="image/*">
+        </div>
+      </div>
+      <button type="submit" class="btn btn-outline btn-sm">Submit Power Update</button>
+    </form>
+    {% else %}
+      <p class="text-muted" style="font-size:0.85rem;">Pending approval — you cannot submit another until this one is resolved.</p>
+    {% endif %}
+  </div>
+
+  <!-- Equipment update -->
+  <div style="border:1px solid var(--border);border-radius:var(--radius);padding:1rem;margin-bottom:1rem;">
+    <h3 style="font-size:1.1rem;margin-bottom:0.75rem;">Equipment Screenshot</h3>
+    {% set has_equip_pending = pending | selectattr('field_name', 'equalto', 'equipment') | list %}
+    {% if has_equip_pending %}
+      <p class="text-muted" style="font-size:0.85rem;"><span class="pending-badge">⏳ Pending approval</span></p>
+    {% else %}
+    <form method="post" action="{{ url_for('profile') }}" enctype="multipart/form-data">
+      <input type="hidden" name="action" value="update_equipment">
+      <div class="form-group">
+        <label class="form-label">New Equipment Screenshot</label>
+        <input type="file" name="equipment_screenshot" class="form-control" accept="image/*">
+      </div>
+      <button type="submit" class="btn btn-outline btn-sm">Submit Equipment Update</button>
+    </form>
+    {% endif %}
+  </div>
+
+  <!-- Quasi Stats update -->
+  <div style="border:1px solid var(--border);border-radius:var(--radius);padding:1rem;margin-bottom:1rem;">
+    <h3 style="font-size:1.1rem;margin-bottom:0.75rem;">Character Stats (Quasi Stats) Screenshot</h3>
+    {% set has_quasi_pending = pending | selectattr('field_name', 'equalto', 'quasi_stats') | list %}
+    {% if has_quasi_pending %}
+      <p class="text-muted" style="font-size:0.85rem;"><span class="pending-badge">⏳ Pending approval</span></p>
+    {% else %}
+    <form method="post" action="{{ url_for('profile') }}" enctype="multipart/form-data">
+      <input type="hidden" name="action" value="update_quasi_stats">
+      <div class="form-group">
+        <label class="form-label">New Quasi Stats Screenshot</label>
+        <input type="file" name="quasi_stats_screenshot" class="form-control" accept="image/*">
+        <p class="form-hint">Screenshot of your character stats / quasi stats window</p>
+      </div>
+      <button type="submit" class="btn btn-outline btn-sm">Submit Quasi Stats Update</button>
+    </form>
+    {% endif %}
+  </div>
+
+  <!-- Job update -->
+  <div style="border:1px solid var(--border);border-radius:var(--radius);padding:1rem;">
+    <h3 style="font-size:1.1rem;margin-bottom:0.75rem;">Job / Class</h3>
+    <p style="font-size:0.85rem;color:var(--text-muted);margin-bottom:0.75rem;">Current: <strong>{{ member.job }}</strong>
+      {% for p in pending %}{% if p.field_name == 'job' %}
+        <span class="pending-badge" style="margin-left:0.5rem;">⏳ {{ p.new_value }} pending</span>
+      {% endif %}{% endfor %}
+    </p>
+    {% set has_job_pending = pending | selectattr('field_name', 'equalto', 'job') | list %}
+    {% if not has_job_pending %}
+    <form method="post" action="{{ url_for('profile') }}">
+      <input type="hidden" name="action" value="update_job">
+      <div class="form-group">
+        <label class="form-label">New Job / Class</label>
+        <select name="job" class="form-control" style="max-width:280px;">
+          <option value="" disabled selected>Select new job...</option>
+          <option {% if member.job == 'Lord Knight' %}selected{% endif %}>Lord Knight</option>
+          <option {% if member.job == 'Paladin' %}selected{% endif %}>Paladin</option>
+          <option {% if member.job == 'Hunter' %}selected{% endif %}>Hunter</option>
+          <option {% if member.job == 'Bard' %}selected{% endif %}>Bard</option>
+          <option {% if member.job == 'Dancer' %}selected{% endif %}>Dancer</option>
+          <option {% if member.job == 'High Wizard' %}selected{% endif %}>High Wizard</option>
+          <option {% if member.job == 'Professor/Sage' %}selected{% endif %}>Professor/Sage</option>
+          <option {% if member.job == 'High Priest' %}selected{% endif %}>High Priest</option>
+          <option {% if member.job == 'Monk' %}selected{% endif %}>Monk</option>
+          <option {% if member.job == 'Assassin Cross' %}selected{% endif %}>Assassin Cross</option>
+          <option {% if member.job == 'Rogue' %}selected{% endif %}>Rogue</option>
+          <option {% if member.job == 'MasterSmith' %}selected{% endif %}>MasterSmith</option>
+          <option {% if member.job == 'Biochemist' %}selected{% endif %}>Biochemist</option>
+        </select>
+      </div>
+      <button type="submit" class="btn btn-outline btn-sm">Submit Job Update</button>
+    </form>
+    {% else %}
+      <p class="text-muted" style="font-size:0.85rem;">Pending approval — you cannot submit another until this one is resolved.</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,57 @@
+{% extends 'base.html' %}
+{% block title %}Officers — inFAMOUS{% endblock %}
+
+{% block content %}
+<div class="officers-hero">
+  <img src="{{ url_for('static', filename='guild_photo.jpg') }}" alt="inFAMOUS Guild" class="officers-hero-bg">
+  <div class="officers-hero-overlay"></div>
+  <div class="officers-hero-content">
+    <div class="officers-guild-name">inFAMOUS</div>
+    <div class="officers-guild-sub">Guild Leadership</div>
+  </div>
+</div>
+
+{% for rank in rank_order %}
+  {% set members = grouped[rank] %}
+  {% if members %}
+  <div class="officers-rank-section">
+    <div class="officers-rank-header rank-{{ rank|lower|replace(' ', '-') }}">
+      <span class="officers-rank-icon">
+        {% if rank == 'Guild Master' %}♛
+        {% elif rank == 'Vice Leader' %}⚜
+        {% elif rank == 'Officer' %}⚔
+        {% else %}★
+        {% endif %}
+      </span>
+      {{ rank }}
+    </div>
+    <div class="officers-card-grid">
+      {% for m in members %}
+      <div class="officer-card">
+        <div class="officer-photo-wrap">
+          {% if m.photo_path %}
+            <img src="{{ url_for('static', filename=m.photo_path) }}" alt="{{ m.name }}">
+          {% else %}
+            <div class="officer-no-photo">⚔</div>
+          {% endif %}
+        </div>
+        <div class="officer-card-body">
+          <div class="officer-name">{{ m.name }}</div>
+          <div class="officer-job">{{ m.job }}</div>
+          <div class="officer-rank-badge rank-{{ rank|lower|replace(' ', '-') }}">{{ rank }}</div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+{% endfor %}
+
+{% set any_officers = namespace(found=false) %}
+{% for rank in rank_order %}{% if grouped[rank] %}{% set any_officers.found = true %}{% endif %}{% endfor %}
+{% if not any_officers.found %}
+  <div class="empty-state" style="margin-top:2rem;">
+    <p>No officers have been assigned yet.</p>
+  </div>
+{% endif %}
+{% endblock %}

@@ -25,10 +25,29 @@ app.config['MAX_CONTENT_LENGTH'] = MAX_CONTENT_LENGTH
 
 SUPPORT_JOBS = {'High Priest', 'Bard', 'Dancer'}
 
-try:
-    Path(UPLOAD_FOLDER).mkdir(parents=True, exist_ok=True)
-except Exception:
-    pass
+def _setup_uploads():
+    data_dir = Path('/data')
+    static_uploads = Path(UPLOAD_FOLDER)
+    if data_dir.is_dir():
+        # Render persistent disk — redirect uploads there via symlink
+        persistent = data_dir / 'uploads'
+        persistent.mkdir(parents=True, exist_ok=True)
+        if static_uploads.is_symlink():
+            if static_uploads.resolve() != persistent.resolve():
+                static_uploads.unlink()
+                static_uploads.symlink_to(persistent)
+        elif static_uploads.is_dir():
+            import shutil
+            for f in static_uploads.iterdir():
+                shutil.move(str(f), str(persistent / f.name))
+            static_uploads.rmdir()
+            static_uploads.symlink_to(persistent)
+        else:
+            static_uploads.symlink_to(persistent)
+    else:
+        static_uploads.mkdir(parents=True, exist_ok=True)
+
+_setup_uploads()
 
 # ── Mail config ───────────────────────────────────────────────────────────────
 app.config['MAIL_SERVER']   = os.environ.get('MAIL_SERVER', 'smtp.gmail.com')
@@ -106,6 +125,16 @@ def init_db():
         with open('schema.sql', 'r') as f:
             db.executescript(f.read())
         # Migrations for existing databases
+        db.executescript("""
+            CREATE TABLE IF NOT EXISTS officers (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                member_id INTEGER NOT NULL,
+                rank TEXT NOT NULL,
+                sort_order INTEGER DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (member_id) REFERENCES members(id)
+            );
+        """)
         for col in [
             "ALTER TABLE members ADD COLUMN email TEXT",
             "ALTER TABLE members ADD COLUMN quasi_stats_screenshot_path TEXT",
@@ -363,6 +392,29 @@ def reset_password(token):
         return redirect(url_for('login'))
 
     return render_template('reset_password.html', token=token)
+
+
+# ── Officers ──────────────────────────────────────────────────────────────────
+
+RANK_ORDER = ['Guild Master', 'Vice Leader', 'Officer', 'Commander']
+
+@app.route('/officers')
+@login_required
+def officers():
+    db = get_db()
+    rows = db.execute(
+        """SELECT o.id, o.rank, o.sort_order,
+                  m.name, m.job, m.photo_path
+           FROM officers o
+           JOIN members m ON m.id = o.member_id
+           WHERE m.status = 'approved'
+           ORDER BY o.sort_order, o.created_at""",
+    ).fetchall()
+    grouped = {r: [] for r in RANK_ORDER}
+    for row in rows:
+        if row['rank'] in grouped:
+            grouped[row['rank']].append(row)
+    return render_template('officers.html', grouped=grouped, rank_order=RANK_ORDER)
 
 
 # ── Member Routes ─────────────────────────────────────────────────────────────
@@ -650,6 +702,55 @@ def admin_index():
     return render_template('admin/index.html', pending_members=pm, pending_updates=pu, total_members=total)
 
 
+# ── Admin Officers ───────────────────────────────────────────────────────────
+
+@app.route('/admin/officers', methods=['GET', 'POST'])
+@admin_required
+def admin_officers():
+    db = get_db()
+    if request.method == 'POST':
+        member_id = request.form.get('member_id', '').strip()
+        rank = request.form.get('rank', '').strip()
+        if not member_id or rank not in RANK_ORDER:
+            flash('Invalid selection.', 'error')
+        else:
+            db.execute(
+                "INSERT INTO officers (member_id, rank) VALUES (?, ?)",
+                (int(member_id), rank)
+            )
+            db.commit()
+            flash('Officer added.', 'success')
+        return redirect(url_for('admin_officers'))
+
+    rows = db.execute(
+        """SELECT o.id, o.rank, m.name, m.job, m.photo_path
+           FROM officers o
+           JOIN members m ON m.id = o.member_id
+           WHERE m.status = 'approved'
+           ORDER BY o.created_at""",
+    ).fetchall()
+    grouped = {r: [] for r in RANK_ORDER}
+    for row in rows:
+        if row['rank'] in grouped:
+            grouped[row['rank']].append(row)
+
+    all_members = db.execute(
+        "SELECT id, name, job FROM members WHERE status='approved' ORDER BY name"
+    ).fetchall()
+    return render_template('admin/officers.html', grouped=grouped,
+                           rank_order=RANK_ORDER, all_members=all_members)
+
+
+@app.route('/admin/officers/remove/<int:officer_id>', methods=['POST'])
+@admin_required
+def admin_officers_remove(officer_id):
+    db = get_db()
+    db.execute("DELETE FROM officers WHERE id=?", (officer_id,))
+    db.commit()
+    flash('Officer removed.', 'success')
+    return redirect(url_for('admin_officers'))
+
+
 # ── Admin Members Roster ─────────────────────────────────────────────────────
 
 @app.route('/admin/members')
@@ -663,6 +764,21 @@ def admin_members():
            FROM members WHERE status='approved' ORDER BY power DESC"""
     ).fetchall()
     return render_template('admin/members.html', members=members)
+
+
+@app.route('/admin/members/delete/<int:member_id>', methods=['POST'])
+@admin_required
+def admin_delete_member(member_id):
+    db = get_db()
+    db.execute("DELETE FROM attendance WHERE member_id=?", (member_id,))
+    db.execute("DELETE FROM pending_updates WHERE member_id=?", (member_id,))
+    db.execute("DELETE FROM gl_party_members WHERE member_id=?", (member_id,))
+    db.execute("DELETE FROM woe_party_members WHERE member_id=?", (member_id,))
+    db.execute("DELETE FROM officers WHERE member_id=?", (member_id,))
+    db.execute("DELETE FROM members WHERE id=?", (member_id,))
+    db.commit()
+    flash('Member deleted.', 'success')
+    return redirect(url_for('admin_members'))
 
 
 # ── Admin Member Approvals ────────────────────────────────────────────────────

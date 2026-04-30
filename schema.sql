@@ -73,3 +73,12 @@ CREATE TABLE IF NOT EXISTS woe_party_members (
     FOREIGN KEY (party_id) REFERENCES woe_parties(id),
     FOREIGN KEY (member_id) REFERENCES members(id)
 );
+
+CREATE TABLE IF NOT EXISTS officers (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    member_id INTEGER NOT NULL,
+    rank TEXT NOT NULL,
+    sort_order INTEGER DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (member_id) REFERENCES members(id)
+);

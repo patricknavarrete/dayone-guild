@@ -920,3 +920,127 @@ select.form-control {
 .badge-approved { background: rgba(34,197,94,0.15); color: #4ade80; }
 .badge-rejected { background: rgba(239,68,68,0.15); color: #f87171; }
 .power-value { font-family: 'Bebas Neue', sans-serif; font-size: 1.1rem; color: var(--gold); letter-spacing: 0.05em; }
+
+/* ── Officers Page ──────────────────────────────────────────────────────────── */
+.officers-hero {
+  position: relative;
+  width: 100%;
+  height: 220px;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  margin-bottom: 2rem;
+  border: 1px solid var(--border);
+}
+.officers-hero-bg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  display: block;
+}
+.officers-hero-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to bottom, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0.72) 100%);
+}
+.officers-hero-content {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+.officers-guild-name {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 4rem;
+  color: var(--gold);
+  letter-spacing: 0.18em;
+  text-shadow: 0 2px 20px rgba(0,0,0,0.8);
+  line-height: 1;
+}
+.officers-guild-sub {
+  font-size: 0.85rem;
+  color: rgba(255,255,255,0.65);
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  margin-top: 0.35rem;
+}
+
+.officers-rank-section { margin-bottom: 2rem; }
+
+.officers-rank-header {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.5rem;
+  letter-spacing: 0.1em;
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius);
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+.officers-rank-icon { font-size: 1.3rem; }
+
+.rank-guild-master  { background: linear-gradient(90deg,rgba(212,175,55,0.18),transparent); border-left: 4px solid var(--gold); color: var(--gold); }
+.rank-vice-leader   { background: linear-gradient(90deg,rgba(204,31,31,0.15),transparent);  border-left: 4px solid var(--red);  color: #e87070; }
+.rank-officer       { background: linear-gradient(90deg,rgba(148,163,184,0.12),transparent); border-left: 4px solid #94a3b8;     color: #94a3b8; }
+.rank-commander     { background: linear-gradient(90deg,rgba(180,130,70,0.15),transparent);  border-left: 4px solid #b4823a;     color: #c9963f; }
+
+.officers-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 1rem;
+}
+
+.officer-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  text-align: center;
+  transition: border-color 0.2s, transform 0.2s;
+}
+.officer-card:hover { border-color: var(--gold); transform: translateY(-3px); }
+
+.officer-photo-wrap {
+  width: 100%;
+  aspect-ratio: 1;
+  overflow: hidden;
+  background: var(--surface2);
+}
+.officer-photo-wrap img { width: 100%; height: 100%; object-fit: cover; }
+.officer-no-photo {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 3rem;
+  color: var(--border);
+}
+
+.officer-card-body { padding: 0.75rem 0.6rem; }
+.officer-name { font-family: 'Bebas Neue', sans-serif; font-size: 1.05rem; color: var(--text); letter-spacing: 0.04em; margin-bottom: 0.15rem; }
+.officer-job  { font-size: 0.72rem; color: var(--gold); font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.4rem; }
+
+.officer-rank-badge {
+  display: inline-block;
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+}
+.officer-rank-badge.rank-guild-master { background: rgba(212,175,55,0.15); color: var(--gold); border: 1px solid rgba(212,175,55,0.35); }
+.officer-rank-badge.rank-vice-leader  { background: rgba(204,31,31,0.12);  color: #e87070;    border: 1px solid rgba(204,31,31,0.3); }
+.officer-rank-badge.rank-officer      { background: rgba(148,163,184,0.1); color: #94a3b8;    border: 1px solid rgba(148,163,184,0.25); }
+.officer-rank-badge.rank-commander    { background: rgba(180,130,70,0.12); color: #c9963f;    border: 1px solid rgba(180,130,70,0.28); }
+
+@media (max-width: 480px) {
+  .officers-guild-name { font-size: 2.8rem; }
+  .officers-hero { height: 160px; }
+  .officers-card-grid { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); }
+}

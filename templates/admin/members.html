@@ -9,7 +9,7 @@
 
 {% if members %}
   {% for m in members %}
-  <div class="approval-card" style="grid-template-columns:auto 1fr;">
+  <div class="approval-card" style="grid-template-columns:auto 1fr auto;">
     {% if m.photo_path %}
       <img src="{{ url_for('static', filename=m.photo_path) }}" alt="{{ m.name }}" class="lightbox-trigger" style="width:64px;height:64px;object-fit:cover;border-radius:8px;cursor:pointer;">
     {% else %}
@@ -48,6 +48,13 @@
           <span style="font-size:0.8rem;color:var(--text-muted);font-style:italic;">No screenshots uploaded.</span>
         {% endif %}
       </div>
+    </div>
+
+    <div style="align-self:flex-start;">
+      <form method="post" action="{{ url_for('admin_delete_member', member_id=m.id) }}"
+            onsubmit="return confirm('Delete {{ m.name }}? This cannot be undone.')">
+        <button type="submit" class="btn btn-red btn-sm">✕ Delete</button>
+      </form>
     </div>
   </div>
   {% endfor %}

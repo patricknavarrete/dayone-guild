@@ -34,10 +34,17 @@
     <ul class="nav-links">
       <li><a href="{{ url_for('roster') }}">Roster</a></li>
       <li><a href="{{ url_for('officers') }}">Officers</a></li>
-      <li><a href="{{ url_for('announcements') }}">Announcements</a></li>
-      <li><a href="{{ url_for('guild_league') }}">Guild League</a></li>
+      <li><a href="{{ url_for('leaderboard') }}">Leaderboard</a></li>
+      <li><a href="{{ url_for('announcements') }}">News</a></li>
+      <li><a href="{{ url_for('guild_league') }}">GL</a></li>
       <li><a href="{{ url_for('woe') }}">WoE</a></li>
-      <li><a href="{{ url_for('profile') }}">My Profile</a></li>
+      <li><a href="{{ url_for('my_attendance') }}">My Attendance</a></li>
+      <li><a href="{{ url_for('profile') }}">Profile</a></li>
+      <li style="position:relative;">
+        <a href="{{ url_for('notifications') }}" style="padding:0.4rem 0.65rem;">
+          🔔{% set nc = notif_count() %}{% if nc > 0 %}<span class="notif-badge">{{ nc if nc < 100 else '99+' }}</span>{% endif %}
+        </a>
+      </li>
       <li><a href="{{ url_for('logout') }}" class="btn-logout">Logout</a></li>
     </ul>
     <button class="menu-toggle" aria-label="Toggle menu">&#9776;</button>

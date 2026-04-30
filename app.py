@@ -154,7 +154,19 @@ def _inject_globals():
             return get_recruitment_status(get_db())
         except Exception:
             return 'open'
-    return dict(csrf_token=_get_csrf_token, ticker_items=ticker, recruitment_status=recruit)
+    def notif_count():
+        mid = session.get('member_id')
+        if not mid:
+            return 0
+        try:
+            row = get_db().execute(
+                "SELECT COUNT(*) as c FROM notifications WHERE member_id=? AND is_read=0", (mid,)
+            ).fetchone()
+            return row['c'] if row else 0
+        except Exception:
+            return 0
+    return dict(csrf_token=_get_csrf_token, ticker_items=ticker,
+                recruitment_status=recruit, notif_count=notif_count)
 
 
 def csrf_protect(f):
@@ -210,6 +222,17 @@ def _migrate_db(db):
     migrations = [
         "ALTER TABLE gl_parties ADD COLUMN notes TEXT DEFAULT ''",
         "ALTER TABLE woe_parties ADD COLUMN notes TEXT DEFAULT ''",
+        "ALTER TABLE attendance ADD COLUMN note TEXT DEFAULT ''",
+        "ALTER TABLE woe_parties ADD COLUMN target_castle TEXT DEFAULT ''",
+        """CREATE TABLE IF NOT EXISTS notifications (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            member_id INTEGER NOT NULL,
+            message TEXT NOT NULL,
+            link TEXT DEFAULT '',
+            is_read INTEGER DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (member_id) REFERENCES members(id)
+        )""",
     ]
     for sql in migrations:
         try:
@@ -246,6 +269,22 @@ def get_attendance_rate(db, member_id, weeks=4):
     attended = sum(1 for r in rows if r['status'] == 'attending')
     pct = round(attended / total * 100) if total else 0
     return {'attended': attended, 'total': total, 'pct': pct}
+
+
+def create_notification(db, member_id, message, link=''):
+    try:
+        db.execute(
+            "INSERT INTO notifications (member_id, message, link) VALUES (?,?,?)",
+            (member_id, message, link)
+        )
+    except Exception:
+        pass
+
+
+def notify_all_members(db, message, link=''):
+    members = db.execute("SELECT id FROM members WHERE status='approved'").fetchall()
+    for m in members:
+        create_notification(db, m['id'], message, link)
 
 
 def get_activity_badge(db, member_id):
@@ -661,7 +700,8 @@ def woe():
             'attendance': get_attendance(r['id'], 'woe', next_woe),
             'is_support': is_support(r['job'])
         } for r in rows]
-        parties.append({'id': p['id'], 'name': p['name'], 'members': members, 'notes': p['notes'] or ''})
+        parties.append({'id': p['id'], 'name': p['name'], 'members': members, 'notes': p['notes'] or '',
+                        'target_castle': p['target_castle'] if p['target_castle'] else ''})
 
     return render_template('woe.html', parties=parties,
                            next_woe=next_woe, woe_att=woe_att,
@@ -851,13 +891,15 @@ def mark_attendance():
         flash('Event date is out of range.', 'error')
         return redirect(url_for('roster'))
 
+    note = request.form.get('absence_note', '').strip()[:300] if status == 'absent' else ''
+
     db = get_db()
     db.execute(
-        """INSERT INTO attendance (member_id, event_type, event_date, status)
-           VALUES (?,?,?,?)
+        """INSERT INTO attendance (member_id, event_type, event_date, status, note)
+           VALUES (?,?,?,?,?)
            ON CONFLICT(member_id, event_type, event_date)
-           DO UPDATE SET status=excluded.status, updated_at=CURRENT_TIMESTAMP""",
-        (session['member_id'], event_type, event_date, status)
+           DO UPDATE SET status=excluded.status, note=excluded.note, updated_at=CURRENT_TIMESTAMP""",
+        (session['member_id'], event_type, event_date, status, note)
     )
     db.commit()
     flash(f"Attendance marked as {'Attending' if status == 'attending' else 'Absent'}.", 'success')
@@ -1018,6 +1060,7 @@ def admin_approvals():
 def admin_approve(member_id):
     db = get_db()
     db.execute("UPDATE members SET status='approved', rejection_reason=NULL WHERE id=?", (member_id,))
+    create_notification(db, member_id, '🎉 Your registration has been approved! Welcome to DayOne.', '/profile')
     db.commit()
     flash('Member approved.', 'success')
     return redirect(url_for('admin_approvals'))
@@ -1081,6 +1124,7 @@ def admin_approve_update(update_id):
         db.execute("UPDATE members SET job=? WHERE id=?", (u['new_value'], u['member_id']))
 
     db.execute("UPDATE pending_updates SET status='approved' WHERE id=?", (update_id,))
+    create_notification(db, u['member_id'], f'✅ Your {field} update has been approved.', '/profile')
     db.commit()
     flash('Update approved.', 'success')
     return redirect(url_for('admin_updates'))
@@ -1092,10 +1136,13 @@ def admin_approve_update(update_id):
 def admin_reject_update(update_id):
     reason = request.form.get('reason', '').strip() or 'No reason provided.'
     db = get_db()
+    u = db.execute("SELECT member_id, field_name FROM pending_updates WHERE id=?", (update_id,)).fetchone()
     db.execute(
         "UPDATE pending_updates SET status='rejected', rejection_reason=? WHERE id=?",
         (reason, update_id)
     )
+    if u:
+        create_notification(db, u['member_id'], f'❌ Your {u["field_name"]} update was rejected: {reason[:80]}', '/profile')
     db.commit()
     flash('Update rejected.', 'success')
     return redirect(url_for('admin_updates'))
@@ -1516,9 +1563,13 @@ def admin_absent():
             "SELECT member_id, status FROM attendance WHERE event_type=? AND event_date=?",
             (event_type, str(event_date))
         ).fetchall()}
-        absent = [{'id': m['id'], 'name': m['name'], 'job': m['job']}
+        note_map = {r['member_id']: r['note'] for r in db.execute(
+            "SELECT member_id, note FROM attendance WHERE event_type=? AND event_date=?",
+            (event_type, str(event_date))
+        ).fetchall()}
+        absent = [{'id': m['id'], 'name': m['name'], 'job': m['job'], 'note': note_map.get(m['id'], '')}
                   for m in members if att_map.get(m['id']) == 'absent']
-        no_resp = [{'id': m['id'], 'name': m['name'], 'job': m['job']}
+        no_resp = [{'id': m['id'], 'name': m['name'], 'job': m['job'], 'note': ''}
                    for m in members if not att_map.get(m['id'])]
         return absent, no_resp
     gl_absent, gl_nr = build_absent('guild_league', next_gl)
@@ -1555,6 +1606,7 @@ def admin_announcements():
                 "INSERT INTO announcements (title, body, is_pinned, is_ticker) VALUES (?,?,?,?)",
                 (title, body, is_pinned, is_ticker)
             )
+            notify_all_members(db, f'📢 New announcement: {title}', '/announcements')
             db.commit()
             flash('Announcement posted.', 'success')
         return redirect(url_for('admin_announcements'))
@@ -1623,6 +1675,116 @@ def admin_woe_save_notes(party_id):
     db.execute("UPDATE woe_parties SET notes=? WHERE id=?", (notes, party_id))
     db.commit()
     return redirect(url_for('admin_woe_parties'))
+
+
+# ── Leaderboard ───────────────────────────────────────────────────────────────
+
+@app.route('/leaderboard')
+@login_required
+def leaderboard():
+    db = get_db()
+    today = datetime.now(PHT).date()
+    cutoff = today - timedelta(weeks=4)
+    members = db.execute(
+        "SELECT id, name, job, photo_path FROM members WHERE status='approved' ORDER BY name"
+    ).fetchall()
+    board = []
+    for m in members:
+        rows = db.execute(
+            "SELECT status FROM attendance WHERE member_id=? AND event_date >= ?",
+            (m['id'], str(cutoff))
+        ).fetchall()
+        total    = len(rows)
+        attended = sum(1 for r in rows if r['status'] == 'attending')
+        pct      = round(attended / total * 100) if total else 0
+        board.append({'id': m['id'], 'name': m['name'], 'job': m['job'],
+                      'photo_path': m['photo_path'],
+                      'attended': attended, 'total': total, 'pct': pct})
+    board.sort(key=lambda x: (-x['pct'], -x['attended'], x['name']))
+    return render_template('leaderboard.html', board=board)
+
+
+# ── My Attendance History ─────────────────────────────────────────────────────
+
+@app.route('/my-attendance')
+@login_required
+def my_attendance():
+    db  = get_db()
+    mid = session['member_id']
+    records = db.execute(
+        """SELECT event_type, event_date, status, note, updated_at
+           FROM attendance WHERE member_id=? ORDER BY event_date DESC""",
+        (mid,)
+    ).fetchall()
+    return render_template('my_attendance.html', records=records)
+
+
+# ── Notifications ─────────────────────────────────────────────────────────────
+
+@app.route('/notifications')
+@login_required
+def notifications():
+    db  = get_db()
+    mid = session['member_id']
+    items = db.execute(
+        "SELECT * FROM notifications WHERE member_id=? ORDER BY created_at DESC LIMIT 60",
+        (mid,)
+    ).fetchall()
+    db.execute("UPDATE notifications SET is_read=1 WHERE member_id=?", (mid,))
+    db.commit()
+    return render_template('notifications.html', notifications=items)
+
+
+@app.route('/notifications/mark-read', methods=['POST'])
+@login_required
+@csrf_protect
+def notifications_mark_read():
+    db = get_db()
+    db.execute("UPDATE notifications SET is_read=1 WHERE member_id=?", (session['member_id'],))
+    db.commit()
+    return redirect(url_for('notifications'))
+
+
+# ── Castle Assignment ─────────────────────────────────────────────────────────
+
+@app.route('/admin/parties/woe/<int:party_id>/castle', methods=['POST'])
+@admin_required
+@csrf_protect
+def admin_woe_save_castle(party_id):
+    castle = request.form.get('target_castle', '').strip()[:60]
+    db = get_db()
+    db.execute("UPDATE woe_parties SET target_castle=? WHERE id=?", (castle, party_id))
+    db.commit()
+    return redirect(url_for('admin_woe_parties'))
+
+
+# ── Admin Power History (JSON for chart) ─────────────────────────────────────
+
+@app.route('/admin/members/<int:member_id>/power-history')
+@admin_required
+def admin_power_history(member_id):
+    db = get_db()
+    member = db.execute("SELECT name, power, created_at FROM members WHERE id=?", (member_id,)).fetchone()
+    if not member:
+        return jsonify({'labels': [], 'values': []})
+    history = db.execute(
+        """SELECT new_value, created_at FROM pending_updates
+           WHERE member_id=? AND field_name='power' AND status='approved'
+           ORDER BY created_at ASC""",
+        (member_id,)
+    ).fetchall()
+    labels = [member['created_at'][:10]]
+    values = [int(db.execute(
+        "SELECT old_value FROM pending_updates WHERE member_id=? AND field_name='power' AND status='approved' ORDER BY created_at ASC LIMIT 1",
+        (member_id,)
+    ).fetchone()['old_value']) if history else member['power']]
+    for h in history:
+        labels.append(h['created_at'][:10])
+        values.append(int(h['new_value']))
+    if not history:
+        labels = [member['created_at'][:10]]
+        values = [member['power']]
+    return jsonify({'labels': labels, 'values': values, 'name': member['name']})
 
 
 # ── Init & Run ────────────────────────────────────────────────────────────────

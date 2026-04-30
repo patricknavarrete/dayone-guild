@@ -1,0 +1,93 @@
+{% extends 'base.html' %}
+{% block title %}My Attendance — DayOne{% endblock %}
+
+{% block content %}
+<h1 class="page-title">📋 My Attendance</h1>
+
+{% if records %}
+  {% set total = records | length %}
+  {% set attended = records | selectattr('status', 'equalto', 'attending') | list | length %}
+  {% set pct = ((attended / total) * 100) | round(1) if total > 0 else 0 %}
+
+  <!-- Summary strip -->
+  <div class="card mb-3" style="display:flex;flex-wrap:wrap;gap:1rem;align-items:center;padding:1rem 1.25rem;">
+    <div style="display:flex;align-items:center;gap:0.5rem;">
+      <span style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.07em;color:var(--text-muted);font-weight:700;">Total Events</span>
+      <span style="font-size:1.1rem;font-weight:700;color:var(--text);">{{ total }}</span>
+    </div>
+    <div style="width:1px;height:28px;background:var(--border);"></div>
+    <div style="display:flex;align-items:center;gap:0.5rem;">
+      <span style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.07em;color:var(--text-muted);font-weight:700;">Attended</span>
+      <span style="font-size:1.1rem;font-weight:700;color:var(--green);">{{ attended }}</span>
+    </div>
+    <div style="width:1px;height:28px;background:var(--border);"></div>
+    <div style="display:flex;align-items:center;gap:0.5rem;">
+      <span style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.07em;color:var(--text-muted);font-weight:700;">Attendance Rate</span>
+      <span style="font-size:1.1rem;font-weight:700;
+        {% if pct >= 70 %}color:var(--green);
+        {% elif pct >= 40 %}color:#d97706;
+        {% else %}color:var(--red);{% endif %}">
+        {{ pct }}%
+      </span>
+    </div>
+    <!-- Mini progress bar -->
+    <div style="flex:1;min-width:120px;height:7px;background:var(--border);border-radius:99px;overflow:hidden;">
+      <div style="height:100%;width:{{ pct }}%;border-radius:99px;
+        {% if pct >= 70 %}background:var(--green);
+        {% elif pct >= 40 %}background:#d97706;
+        {% else %}background:var(--red);{% endif %}
+        transition:width 0.4s ease;"></div>
+    </div>
+  </div>
+
+  <!-- Records table -->
+  <div class="card" style="overflow-x:auto;">
+    <table class="data-table" style="width:100%;border-collapse:collapse;">
+      <thead>
+        <tr>
+          <th style="padding:0.6rem 0.9rem;text-align:left;font-size:0.72rem;text-transform:uppercase;letter-spacing:0.07em;color:var(--text-muted);border-bottom:1px solid var(--border);">Date</th>
+          <th style="padding:0.6rem 0.9rem;text-align:left;font-size:0.72rem;text-transform:uppercase;letter-spacing:0.07em;color:var(--text-muted);border-bottom:1px solid var(--border);">Event</th>
+          <th style="padding:0.6rem 0.9rem;text-align:left;font-size:0.72rem;text-transform:uppercase;letter-spacing:0.07em;color:var(--text-muted);border-bottom:1px solid var(--border);">Status</th>
+          <th style="padding:0.6rem 0.9rem;text-align:left;font-size:0.72rem;text-transform:uppercase;letter-spacing:0.07em;color:var(--text-muted);border-bottom:1px solid var(--border);">Note</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in records %}
+        <tr style="border-bottom:1px solid var(--border);">
+          <td style="padding:0.65rem 0.9rem;font-size:0.85rem;white-space:nowrap;color:var(--text-muted);">
+            {{ r.event_date | fmtdate }}
+          </td>
+          <td style="padding:0.65rem 0.9rem;font-size:0.85rem;font-weight:600;">
+            {% if r.event_type == 'guild_league' %}
+              ⚔ Guild League
+            {% elif r.event_type == 'woe' %}
+              🏰 WoE
+            {% else %}
+              {{ r.event_type | title }}
+            {% endif %}
+          </td>
+          <td style="padding:0.65rem 0.9rem;">
+            <span class="att-badge-text {{ r.status }}">
+              <span class="dot"></span>{{ r.status | replace('_', ' ') | title }}
+            </span>
+          </td>
+          <td style="padding:0.65rem 0.9rem;">
+            {% if r.note %}
+              <span style="font-size:0.8rem;color:var(--text-muted);font-style:italic;">{{ r.note }}</span>
+            {% else %}
+              <span style="color:var(--border);">—</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+{% else %}
+  <div class="empty-state">
+    <p>No attendance records yet.</p>
+    <p class="mt-1" style="font-size:0.85rem;">Mark your attendance on the Guild League or WoE pages before the events.</p>
+  </div>
+{% endif %}
+{% endblock %}

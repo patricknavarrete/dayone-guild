@@ -63,15 +63,16 @@
         <div class="admin-party-card">
           <div class="party-header">
             <h3>{{ party.name }}</h3>
-            <div style="display:flex;align-items:center;gap:0.5rem;">
+            <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">
               <span style="font-size:0.72rem;color:var(--text-muted);">{{ party.members|length }}/5</span>
               <form method="post" action="{{ url_for('admin_woe_delete_party', party_id=party.id) }}"
-                    onsubmit="return confirm('Delete {{ party.name }}?')" style="margin:0;">
+                    onsubmit="return confirm('Delete {{ party.name | e }}?')" style="margin:0;">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <button type="submit" class="btn btn-red btn-sm" style="padding:0.15rem 0.4rem;font-size:0.7rem;">✕</button>
               </form>
             </div>
           </div>
+
           <div class="sortable-list" data-party-id="{{ party.id }}">
             {% for m in party.members %}
             <div class="member-chip {% if m.is_support %}support-chip{% endif %}" data-member-id="{{ m.id }}">
@@ -89,6 +90,22 @@
             <div class="empty-drop" style="padding:0.75rem;text-align:center;color:var(--text-muted);font-size:0.78rem;border:1px dashed var(--border);border-radius:var(--radius);margin:0.25rem;">Drop members here</div>
             {% endfor %}
           </div>
+
+          <!-- Castle Target form -->
+          <div style="margin-top:0.75rem;padding-top:0.65rem;border-top:1px solid var(--border);">
+            <form method="post" action="/admin/parties/woe/{{ party.id }}/castle"
+                  style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <label style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.07em;color:var(--text-muted);white-space:nowrap;">🏯 Castle</label>
+              <input type="text" name="target_castle"
+                     value="{{ party.target_castle or '' }}"
+                     placeholder="e.g. Prontera Chivalry"
+                     class="form-control"
+                     style="flex:1;min-width:0;font-size:0.8rem;padding:0.3rem 0.55rem;">
+              <button type="submit" class="btn btn-outline btn-sm" style="font-size:0.75rem;white-space:nowrap;">Save</button>
+            </form>
+          </div>
+
         </div>
         {% endfor %}
       </div>
@@ -105,6 +122,34 @@
   <span class="att-badge attending" style="display:inline-block;vertical-align:middle;"></span> Attending &nbsp;
   <span class="att-badge absent" style="display:inline-block;vertical-align:middle;"></span> Absent &nbsp;
   <span class="att-badge no-response" style="display:inline-block;vertical-align:middle;"></span> No Response
+</div>
+
+<!-- WoE Maps section -->
+<div style="margin-top:2.5rem;">
+  <div class="section-divider" style="margin-bottom:1.25rem;">WoE Maps</div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1.25rem;">
+
+    <div class="card" style="padding:0;overflow:hidden;">
+      <div style="padding:0.65rem 1rem;border-bottom:1px solid var(--border);font-weight:600;font-size:0.85rem;display:flex;align-items:center;gap:0.5rem;">
+        🗺 Lower WoE Map
+      </div>
+      <a href="/static/images/lower_woe_map.png" class="lightbox-trigger" style="display:block;">
+        <img src="/static/images/lower_woe_map.png" alt="Lower WoE Map"
+             style="width:100%;display:block;object-fit:contain;max-height:420px;">
+      </a>
+    </div>
+
+    <div class="card" style="padding:0;overflow:hidden;">
+      <div style="padding:0.65rem 1rem;border-bottom:1px solid var(--border);font-weight:600;font-size:0.85rem;display:flex;align-items:center;gap:0.5rem;">
+        🗺 Upper WoE Map
+      </div>
+      <a href="/static/images/upper_woe_map.png" class="lightbox-trigger" style="display:block;">
+        <img src="/static/images/upper_woe_map.png" alt="Upper WoE Map"
+             style="width:100%;display:block;object-fit:contain;max-height:420px;">
+      </a>
+    </div>
+
+  </div>
 </div>
 {% endblock %}
 

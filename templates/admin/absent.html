@@ -19,10 +19,17 @@
       <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--absent);margin-bottom:0.5rem;">Absent ({{ gl_absent|length }})</div>
       <ul style="list-style:none;display:flex;flex-direction:column;gap:0.35rem;">
         {% for m in gl_absent %}
-        <li style="display:flex;align-items:center;gap:0.6rem;background:var(--surface);border:1px solid rgba(239,68,68,0.2);border-radius:var(--radius);padding:0.5rem 0.75rem;">
-          <span class="att-badge absent"></span>
-          <span style="flex:1;font-size:0.875rem;">{{ m.name }}</span>
-          <span style="font-size:0.72rem;color:var(--text-muted);">{{ m.job }}</span>
+        <li style="background:var(--surface);border:1px solid rgba(239,68,68,0.2);border-radius:var(--radius);padding:0.5rem 0.75rem;">
+          <div style="display:flex;align-items:center;gap:0.6rem;">
+            <span class="att-badge absent"></span>
+            <span style="flex:1;font-size:0.875rem;font-weight:500;">{{ m.name }}</span>
+            <span style="font-size:0.72rem;color:var(--text-muted);">{{ m.job }}</span>
+          </div>
+          {% if m.note %}
+          <div style="margin-top:0.3rem;padding-left:1.4rem;font-size:0.78rem;color:var(--text-muted);font-style:italic;">
+            "{{ m.note }}"
+          </div>
+          {% endif %}
         </li>
         {% endfor %}
       </ul>
@@ -34,10 +41,17 @@
       <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--grey);margin-bottom:0.5rem;">No Response ({{ gl_nr|length }})</div>
       <ul style="list-style:none;display:flex;flex-direction:column;gap:0.35rem;">
         {% for m in gl_nr %}
-        <li style="display:flex;align-items:center;gap:0.6rem;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:0.5rem 0.75rem;">
-          <span class="att-badge no-response"></span>
-          <span style="flex:1;font-size:0.875rem;">{{ m.name }}</span>
-          <span style="font-size:0.72rem;color:var(--text-muted);">{{ m.job }}</span>
+        <li style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:0.5rem 0.75rem;">
+          <div style="display:flex;align-items:center;gap:0.6rem;">
+            <span class="att-badge no-response"></span>
+            <span style="flex:1;font-size:0.875rem;">{{ m.name }}</span>
+            <span style="font-size:0.72rem;color:var(--text-muted);">{{ m.job }}</span>
+          </div>
+          {% if m.note %}
+          <div style="margin-top:0.3rem;padding-left:1.4rem;font-size:0.78rem;color:var(--text-muted);font-style:italic;">
+            "{{ m.note }}"
+          </div>
+          {% endif %}
         </li>
         {% endfor %}
       </ul>
@@ -61,10 +75,17 @@
       <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--absent);margin-bottom:0.5rem;">Absent ({{ woe_absent|length }})</div>
       <ul style="list-style:none;display:flex;flex-direction:column;gap:0.35rem;">
         {% for m in woe_absent %}
-        <li style="display:flex;align-items:center;gap:0.6rem;background:var(--surface);border:1px solid rgba(239,68,68,0.2);border-radius:var(--radius);padding:0.5rem 0.75rem;">
-          <span class="att-badge absent"></span>
-          <span style="flex:1;font-size:0.875rem;">{{ m.name }}</span>
-          <span style="font-size:0.72rem;color:var(--text-muted);">{{ m.job }}</span>
+        <li style="background:var(--surface);border:1px solid rgba(239,68,68,0.2);border-radius:var(--radius);padding:0.5rem 0.75rem;">
+          <div style="display:flex;align-items:center;gap:0.6rem;">
+            <span class="att-badge absent"></span>
+            <span style="flex:1;font-size:0.875rem;font-weight:500;">{{ m.name }}</span>
+            <span style="font-size:0.72rem;color:var(--text-muted);">{{ m.job }}</span>
+          </div>
+          {% if m.note %}
+          <div style="margin-top:0.3rem;padding-left:1.4rem;font-size:0.78rem;color:var(--text-muted);font-style:italic;">
+            "{{ m.note }}"
+          </div>
+          {% endif %}
         </li>
         {% endfor %}
       </ul>
@@ -76,10 +97,17 @@
       <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--grey);margin-bottom:0.5rem;">No Response ({{ woe_nr|length }})</div>
       <ul style="list-style:none;display:flex;flex-direction:column;gap:0.35rem;">
         {% for m in woe_nr %}
-        <li style="display:flex;align-items:center;gap:0.6rem;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:0.5rem 0.75rem;">
-          <span class="att-badge no-response"></span>
-          <span style="flex:1;font-size:0.875rem;">{{ m.name }}</span>
-          <span style="font-size:0.72rem;color:var(--text-muted);">{{ m.job }}</span>
+        <li style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:0.5rem 0.75rem;">
+          <div style="display:flex;align-items:center;gap:0.6rem;">
+            <span class="att-badge no-response"></span>
+            <span style="flex:1;font-size:0.875rem;">{{ m.name }}</span>
+            <span style="font-size:0.72rem;color:var(--text-muted);">{{ m.job }}</span>
+          </div>
+          {% if m.note %}
+          <div style="margin-top:0.3rem;padding-left:1.4rem;font-size:0.78rem;color:var(--text-muted);font-style:italic;">
+            "{{ m.note }}"
+          </div>
+          {% endif %}
         </li>
         {% endfor %}
       </ul>

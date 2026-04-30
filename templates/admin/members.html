@@ -1,22 +1,44 @@
 {% extends 'admin/base.html' %}
 {% block title %}Members — DayOne Admin{% endblock %}
 
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+{% endblock %}
+
 {% block content %}
 <div class="section-header">
   <h1 class="page-title" style="margin:0;">Members</h1>
   <span class="badge badge-pending">{{ members|length }} approved</span>
 </div>
 
+<!-- Search -->
+<div style="margin-bottom:1.25rem;">
+  <input type="text" id="member-search" class="form-control" placeholder="🔍  Search by name, username or job..."
+         style="max-width:360px;" autocomplete="off">
+</div>
+
+<!-- Cards grid: 1 col on small, auto-fit on medium+ -->
+<div id="members-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,480px),1fr));gap:1rem;">
+
 {% if members %}
   {% for m in members %}
-  <div class="approval-card" style="grid-template-columns:auto 1fr auto;">
+  <div class="approval-card member-item"
+       data-name="{{ m.name | lower }}"
+       data-username="{{ m.username | lower }}"
+       data-job="{{ m.job | lower }}"
+       style="grid-template-columns:auto 1fr auto;">
+
+    <!-- Photo -->
     {% if m.photo_path %}
-      <img src="{{ url_for('static', filename=m.photo_path) }}" alt="{{ m.name }}" class="lightbox-trigger" style="width:64px;height:64px;object-fit:cover;border-radius:8px;cursor:pointer;">
+      <img src="{{ url_for('static', filename=m.photo_path) }}" alt="{{ m.name }}"
+           class="lightbox-trigger"
+           style="width:64px;height:64px;object-fit:cover;border-radius:8px;cursor:pointer;flex-shrink:0;">
     {% else %}
-      <div class="no-img" style="width:64px;height:64px;display:flex;align-items:center;justify-content:center;font-size:1.6rem;">⚔</div>
+      <div class="no-img" style="width:64px;height:64px;display:flex;align-items:center;justify-content:center;font-size:1.6rem;flex-shrink:0;">⚔</div>
     {% endif %}
 
-    <div>
+    <!-- Info -->
+    <div style="min-width:0;">
       <div style="display:flex;align-items:center;gap:0.6rem;flex-wrap:wrap;margin-bottom:0.3rem;">
         <h3 style="margin:0;">{{ m.name }}</h3>
         <span style="font-size:0.78rem;color:var(--text-muted);">@{{ m.username }}</span>
@@ -25,43 +47,178 @@
       <div style="font-size:1.05rem;font-weight:700;color:var(--gold);margin-bottom:0.6rem;">
         ⚡ <span class="power-value">{{ "{:,}".format(m.power) }}</span>
       </div>
-      <div style="display:flex;gap:0.75rem;flex-wrap:wrap;">
+      <div style="display:flex;gap:0.75rem;flex-wrap:wrap;margin-bottom:0.6rem;">
         {% if m.power_screenshot_path %}
           <div>
             <div style="font-size:0.68rem;color:var(--text-muted);margin-bottom:0.2rem;">POWER SS</div>
-            <img src="{{ url_for('static', filename=m.power_screenshot_path) }}" class="screenshot-thumb lightbox-trigger" alt="Power screenshot" style="max-width:140px;">
+            <img src="{{ url_for('static', filename=m.power_screenshot_path) }}"
+                 class="screenshot-thumb lightbox-trigger" alt="Power screenshot" style="max-width:140px;">
           </div>
         {% endif %}
         {% if m.equipment_screenshot_path %}
           <div>
             <div style="font-size:0.68rem;color:var(--text-muted);margin-bottom:0.2rem;">EQUIPMENT SS</div>
-            <img src="{{ url_for('static', filename=m.equipment_screenshot_path) }}" class="screenshot-thumb lightbox-trigger" alt="Equipment screenshot" style="max-width:140px;">
+            <img src="{{ url_for('static', filename=m.equipment_screenshot_path) }}"
+                 class="screenshot-thumb lightbox-trigger" alt="Equipment screenshot" style="max-width:140px;">
           </div>
         {% endif %}
         {% if m.quasi_stats_screenshot_path %}
           <div>
             <div style="font-size:0.68rem;color:var(--text-muted);margin-bottom:0.2rem;">QUASI STATS SS</div>
-            <img src="{{ url_for('static', filename=m.quasi_stats_screenshot_path) }}" class="screenshot-thumb lightbox-trigger" alt="Quasi Stats screenshot" style="max-width:140px;">
+            <img src="{{ url_for('static', filename=m.quasi_stats_screenshot_path) }}"
+                 class="screenshot-thumb lightbox-trigger" alt="Quasi Stats screenshot" style="max-width:140px;">
           </div>
         {% endif %}
         {% if not m.power_screenshot_path and not m.equipment_screenshot_path and not m.quasi_stats_screenshot_path %}
           <span style="font-size:0.8rem;color:var(--text-muted);font-style:italic;">No screenshots uploaded.</span>
         {% endif %}
       </div>
+
+      <!-- Power history button -->
+      <button type="button" class="btn btn-outline btn-sm"
+              onclick="openPowerModal({{ m.id }}, '{{ m.name | e }}')"
+              style="font-size:0.78rem;">
+        📈 Power History
+      </button>
     </div>
 
+    <!-- Actions -->
     <div style="align-self:flex-start;">
       <form method="post" action="{{ url_for('admin_delete_member', member_id=m.id) }}"
-            onsubmit="return confirm('Delete {{ m.name }}? This cannot be undone.')">
+            onsubmit="return confirm('Delete {{ m.name | e }}? This cannot be undone.')">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <button type="submit" class="btn btn-red btn-sm">✕ Delete</button>
       </form>
     </div>
+
   </div>
+
+  <!-- Power History Modal for this member -->
+  <div id="power-modal-{{ m.id }}" class="modal-overlay" style="display:none;">
+    <div class="modal" style="max-width:560px;width:100%;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+        <h3 style="margin:0;font-size:1rem;">📈 Power History — {{ m.name }}</h3>
+        <button type="button" class="btn btn-outline btn-sm"
+                onclick="closePowerModal({{ m.id }})">✕ Close</button>
+      </div>
+      <div style="position:relative;height:260px;">
+        <canvas id="power-chart-{{ m.id }}"></canvas>
+      </div>
+      <p id="power-empty-{{ m.id }}" style="display:none;text-align:center;color:var(--text-muted);font-size:0.85rem;padding:1rem 0;">
+        No power history recorded yet.
+      </p>
+    </div>
+  </div>
+
   {% endfor %}
+
 {% else %}
-  <div class="empty-state">
+  <div class="empty-state" style="grid-column:1/-1;">
     <p>No approved members yet.</p>
   </div>
 {% endif %}
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+/* ── Client-side search ── */
+const memberSearch = document.getElementById('member-search');
+if (memberSearch) {
+  memberSearch.addEventListener('input', function () {
+    const q = this.value.toLowerCase();
+    document.querySelectorAll('.member-item').forEach(card => {
+      const name     = card.dataset.name     || '';
+      const username = card.dataset.username || '';
+      const job      = card.dataset.job      || '';
+      card.style.display = (name.includes(q) || username.includes(q) || job.includes(q)) ? '' : 'none';
+    });
+  });
+}
+
+/* ── Power History Modal ── */
+const _chartInstances = {};
+
+function openPowerModal(id, name) {
+  const modal = document.getElementById('power-modal-' + id);
+  if (!modal) return;
+  modal.style.display = 'flex';
+
+  // Only fetch once
+  if (_chartInstances[id]) return;
+
+  fetch('/admin/members/' + id + '/power-history')
+    .then(r => r.json())
+    .then(data => {
+      const emptyEl = document.getElementById('power-empty-' + id);
+      if (!data.labels || data.labels.length === 0) {
+        if (emptyEl) emptyEl.style.display = 'block';
+        return;
+      }
+      const ctx = document.getElementById('power-chart-' + id);
+      if (!ctx) return;
+
+      _chartInstances[id] = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: data.labels,
+          datasets: [{
+            label: 'Combat Power',
+            data: data.values,
+            borderColor: 'var(--gold)',
+            backgroundColor: 'rgba(202,162,90,0.12)',
+            borderWidth: 2,
+            pointBackgroundColor: 'var(--gold)',
+            pointRadius: 4,
+            fill: true,
+            tension: 0.3
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: ctx => ' ' + ctx.parsed.y.toLocaleString()
+              }
+            }
+          },
+          scales: {
+            y: {
+              ticks: {
+                callback: v => v.toLocaleString(),
+                color: '#888',
+                font: { family: 'Barlow', size: 11 }
+              },
+              grid: { color: 'rgba(0,0,0,0.06)' }
+            },
+            x: {
+              ticks: {
+                color: '#888',
+                font: { family: 'Barlow', size: 11 }
+              },
+              grid: { color: 'rgba(0,0,0,0.04)' }
+            }
+          }
+        }
+      });
+    })
+    .catch(err => console.error('Power history fetch failed:', err));
+}
+
+function closePowerModal(id) {
+  const modal = document.getElementById('power-modal-' + id);
+  if (modal) modal.style.display = 'none';
+}
+
+/* Close modal on overlay click */
+document.addEventListener('click', function (e) {
+  if (e.target.classList.contains('modal-overlay')) {
+    e.target.style.display = 'none';
+  }
+});
+</script>
 {% endblock %}

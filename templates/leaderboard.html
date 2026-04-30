@@ -1,0 +1,90 @@
+{% extends 'base.html' %}
+{% block title %}Attendance Leaderboard — DayOne{% endblock %}
+
+{% block content %}
+<h1 class="page-title">🏆 Attendance Leaderboard</h1>
+<p class="text-muted mb-3" style="font-size:0.85rem;">Based on last 4 weeks of events.</p>
+
+{% if board %}
+<div class="card" style="overflow-x:auto;">
+  <table class="data-table" style="width:100%;border-collapse:collapse;">
+    <thead>
+      <tr>
+        <th style="padding:0.6rem 0.75rem;text-align:left;font-size:0.72rem;text-transform:uppercase;letter-spacing:0.07em;color:var(--text-muted);border-bottom:1px solid var(--border);">Rank</th>
+        <th style="padding:0.6rem 0.75rem;text-align:left;font-size:0.72rem;text-transform:uppercase;letter-spacing:0.07em;color:var(--text-muted);border-bottom:1px solid var(--border);">Member</th>
+        <th style="padding:0.6rem 0.75rem;text-align:left;font-size:0.72rem;text-transform:uppercase;letter-spacing:0.07em;color:var(--text-muted);border-bottom:1px solid var(--border);">Job</th>
+        <th style="padding:0.6rem 0.75rem;text-align:center;font-size:0.72rem;text-transform:uppercase;letter-spacing:0.07em;color:var(--text-muted);border-bottom:1px solid var(--border);">Events</th>
+        <th style="padding:0.6rem 0.75rem;text-align:left;font-size:0.72rem;text-transform:uppercase;letter-spacing:0.07em;color:var(--text-muted);border-bottom:1px solid var(--border);min-width:160px;">Attendance</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for entry in board %}
+      {% set rank = loop.index %}
+      <tr style="border-bottom:1px solid var(--border);{% if rank <= 3 %}background:var(--surface2);{% endif %}">
+
+        <!-- Rank -->
+        <td style="padding:0.65rem 0.75rem;font-weight:700;font-size:1rem;text-align:center;width:52px;">
+          {% if rank == 1 %}
+            🥇
+          {% elif rank == 2 %}
+            🥈
+          {% elif rank == 3 %}
+            🥉
+          {% else %}
+            <span style="color:var(--text-muted);font-size:0.85rem;">{{ rank }}</span>
+          {% endif %}
+        </td>
+
+        <!-- Photo + Name -->
+        <td style="padding:0.65rem 0.75rem;">
+          <div style="display:flex;align-items:center;gap:0.6rem;">
+            {% if entry.photo_path %}
+              <img src="{{ url_for('static', filename=entry.photo_path) }}" alt="{{ entry.name }}"
+                   style="width:36px;height:36px;object-fit:cover;border-radius:50%;border:2px solid var(--border);flex-shrink:0;">
+            {% else %}
+              <div style="width:36px;height:36px;border-radius:50%;background:var(--surface2);border:2px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:1rem;flex-shrink:0;">⚔</div>
+            {% endif %}
+            <span style="font-weight:600;font-size:0.9rem;">{{ entry.name }}</span>
+          </div>
+        </td>
+
+        <!-- Job -->
+        <td style="padding:0.65rem 0.75rem;font-size:0.8rem;color:var(--text-muted);">{{ entry.job }}</td>
+
+        <!-- Attended / Total -->
+        <td style="padding:0.65rem 0.75rem;text-align:center;font-size:0.85rem;">
+          <span style="font-weight:600;color:var(--text);">{{ entry.attended }}</span>
+          <span style="color:var(--text-muted);">/{{ entry.total }}</span>
+        </td>
+
+        <!-- Pct + progress bar -->
+        <td style="padding:0.65rem 0.75rem;">
+          <div style="display:flex;align-items:center;gap:0.6rem;">
+            <span style="font-size:0.82rem;font-weight:700;min-width:36px;
+              {% if entry.pct >= 70 %}color:var(--green);
+              {% elif entry.pct >= 40 %}color:#d97706;
+              {% else %}color:var(--red);{% endif %}">
+              {{ entry.pct }}%
+            </span>
+            <div style="flex:1;height:6px;background:var(--border);border-radius:99px;overflow:hidden;min-width:80px;">
+              <div style="height:100%;width:{{ entry.pct }}%;border-radius:99px;
+                {% if entry.pct >= 70 %}background:var(--green);
+                {% elif entry.pct >= 40 %}background:#d97706;
+                {% else %}background:var(--red);{% endif %}
+                transition:width 0.4s ease;"></div>
+            </div>
+          </div>
+        </td>
+
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="empty-state">
+  <p>No attendance data yet.</p>
+  <p class="mt-1" style="font-size:0.85rem;">Leaderboard will populate once events are recorded.</p>
+</div>
+{% endif %}
+{% endblock %}

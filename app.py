@@ -15,7 +15,7 @@ from werkzeug.utils import secure_filename
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'dayone-dev-secret-change-in-prod')
 ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', 'admin1234')
-DATABASE = os.environ.get('DATABASE_PATH', 'dayone.db')
+DATABASE = os.environ.get('DATABASE_PATH', '/data/dayone.db')
 UPLOAD_FOLDER = os.path.join('static', 'uploads')
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
 MAX_CONTENT_LENGTH = 16 * 1024 * 1024
@@ -103,12 +103,13 @@ def verify_reset_token(token, max_age=3600):
 # ── Database ──────────────────────────────────────────────────────────────────
 
 def get_db():
+    import os
+
     db = getattr(g, '_database', None)
     if db is None:
+        os.makedirs(os.path.dirname(DATABASE), exist_ok=True)
         db = g._database = sqlite3.connect(DATABASE)
         db.row_factory = sqlite3.Row
-        db.execute("PRAGMA journal_mode=WAL")
-        db.execute("PRAGMA foreign_keys=ON")
     return db
 
 

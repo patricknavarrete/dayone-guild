@@ -120,31 +120,16 @@ def close_connection(exception):
         db.close()
 
 
+import os
+
 def init_db():
-    with app.app_context():
-        db = get_db()
-        with open('schema.sql', 'r') as f:
-            db.executescript(f.read())
-        # Migrations for existing databases
-        db.executescript("""
-            CREATE TABLE IF NOT EXISTS officers (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                member_id INTEGER NOT NULL,
-                rank TEXT NOT NULL,
-                sort_order INTEGER DEFAULT 0,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (member_id) REFERENCES members(id)
-            );
-        """)
-        for col in [
-            "ALTER TABLE members ADD COLUMN email TEXT",
-            "ALTER TABLE members ADD COLUMN quasi_stats_screenshot_path TEXT",
-        ]:
-            try:
-                db.execute(col)
-            except Exception:
-                pass
-        db.commit()
+    db = get_db()
+
+    schema_path = os.path.join(os.path.dirname(__file__), 'schema.sql')
+    with open(schema_path, 'r') as f:
+        db.executescript(f.read())
+
+    db.commit()
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────

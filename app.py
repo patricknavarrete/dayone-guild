@@ -1249,14 +1249,7 @@ def _enforce_support(db, party_table, member_table):
 
 
 # ── Init & Run ────────────────────────────────────────────────────────────────
-
-#with app.app_context():
-    #init_db()
-
-#if __name__ == '__main__':
-    #app.run(debug=True)
-
-    if __name__ == '__main__':
+if __name__ == '__main__':
     with app.app_context():
         init_db()
     app.run(debug=True)

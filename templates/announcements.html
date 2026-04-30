@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+{% block title %}Announcements — DayOne{% endblock %}
+
+{% block content %}
+<h1 class="page-title">📢 Announcements</h1>
+
+{% if announcements %}
+  <div style="display:flex;flex-direction:column;gap:1.25rem;">
+    {% for ann in announcements %}
+    <div style="background:var(--surface);border:1px solid {% if ann.is_pinned %}var(--gold){% else %}var(--border){% endif %};border-radius:var(--radius-lg);padding:1.25rem 1.5rem;position:relative;">
+      {% if ann.is_pinned %}
+      <span style="position:absolute;top:0.75rem;right:1rem;font-size:0.65rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;background:rgba(212,175,55,0.15);color:var(--gold);border:1px solid rgba(212,175,55,0.35);border-radius:999px;padding:0.15rem 0.55rem;">📌 Pinned</span>
+      {% endif %}
+      <h2 style="font-size:1.2rem;margin-bottom:{% if ann.body %}0.6rem{% else %}0{% endif %};color:var(--gold);font-family:'Bebas Neue',sans-serif;letter-spacing:0.06em;padding-right:{% if ann.is_pinned %}5rem{% else %}0{% endif %};">{{ ann.title }}</h2>
+      {% if ann.body %}
+      <p style="font-size:0.9rem;color:var(--text);white-space:pre-wrap;line-height:1.6;">{{ ann.body }}</p>
+      {% endif %}
+      <div style="margin-top:0.75rem;font-size:0.72rem;color:var(--text-muted);">
+        Posted {{ ann.created_at | fmtdate }}{% if ann.updated_at and ann.updated_at != ann.created_at %} · Updated {{ ann.updated_at | fmtdate }}{% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="empty-state">
+    <p>No announcements right now.</p>
+    <p class="mt-1" style="font-size:0.85rem;">Check back later for guild updates.</p>
+  </div>
+{% endif %}
+{% endblock %}

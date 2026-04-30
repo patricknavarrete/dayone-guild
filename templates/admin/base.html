@@ -19,8 +19,18 @@
       <li><a href="{{ url_for('admin_approvals') }}">Approvals</a></li>
       <li><a href="{{ url_for('admin_updates') }}">Updates</a></li>
       <li><a href="{{ url_for('admin_attendance') }}">Attendance</a></li>
+      <li><a href="{{ url_for('admin_announcements') }}">Announcements</a></li>
+      <li><a href="{{ url_for('admin_absent') }}">Absent</a></li>
       <li><a href="{{ url_for('admin_gl_parties') }}">GL Parties</a></li>
       <li><a href="{{ url_for('admin_woe_parties') }}">WoE Parties</a></li>
+      <li>
+        <form method="post" action="{{ url_for('admin_toggle_recruitment') }}" style="display:inline;">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="submit" class="btn btn-sm {% if recruitment_status() == 'open' %}btn-green{% else %}btn-red{% endif %}" style="font-size:0.72rem;padding:0.25rem 0.6rem;">
+            {% if recruitment_status() == 'open' %}🟢 Recruiting{% else %}🔴 Closed{% endif %}
+          </button>
+        </form>
+      </li>
       <li><a href="{{ url_for('roster') }}" style="color:var(--text-muted);">← Site</a></li>
       <li><a href="{{ url_for('admin_logout') }}" class="logout-link">Logout</a></li>
     </ul>

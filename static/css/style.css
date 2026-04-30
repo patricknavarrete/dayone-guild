@@ -41,6 +41,55 @@ h1, h2, h3, h4 {
   line-height: 1.1;
 }
 
+/* ── News Ticker ────────────────────────────────────────────────────────────── */
+.news-ticker {
+  background: #0d0d0d;
+  border-bottom: 1px solid rgba(212,175,55,0.25);
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  height: 34px;
+  position: sticky;
+  top: 0;
+  z-index: 101;
+}
+.ticker-label {
+  flex-shrink: 0;
+  padding: 0 0.85rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--gold);
+  background: rgba(212,175,55,0.1);
+  border-right: 1px solid rgba(212,175,55,0.25);
+  height: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+.ticker-track {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+}
+.ticker-content {
+  display: flex;
+  gap: 3rem;
+  white-space: nowrap;
+  animation: ticker-scroll 28s linear infinite;
+}
+.ticker-item {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  padding: 0 1rem;
+}
+.ticker-item::before { content: '◆ '; color: var(--gold); font-size: 0.55rem; vertical-align: middle; }
+@keyframes ticker-scroll {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
 /* ── Navbar ─────────────────────────────────────────────────────────────────── */
 .navbar {
   background: #0d0d0d;

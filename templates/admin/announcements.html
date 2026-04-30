@@ -1,0 +1,105 @@
+{% extends 'admin/base.html' %}
+{% block title %}Announcements — Admin DayOne{% endblock %}
+
+{% block content %}
+<h1 class="page-title">📢 Manage Announcements</h1>
+
+<!-- Create / Edit Form -->
+<div class="form-section" id="ann-form-section">
+  <h2 id="ann-form-title">New Announcement</h2>
+  <form method="post" action="{{ url_for('admin_announcements') }}" id="ann-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="edit_id" id="edit_id" value="">
+    <div class="form-group">
+      <label class="form-label">Title <span style="color:var(--red)">*</span></label>
+      <input type="text" name="title" id="ann-title" class="form-control" placeholder="Announcement headline" required>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Body <span style="font-size:0.78rem;color:var(--text-muted);">(optional — markdown-like text supported)</span></label>
+      <textarea name="body" id="ann-body" class="form-control" rows="4" placeholder="Enter details here..."></textarea>
+    </div>
+    <div style="display:flex;gap:1.5rem;flex-wrap:wrap;margin-bottom:1rem;">
+      <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;font-size:0.9rem;">
+        <input type="checkbox" name="is_pinned" id="ann-pinned" style="accent-color:var(--gold);">
+        📌 Pin to top
+      </label>
+      <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;font-size:0.9rem;">
+        <input type="checkbox" name="is_ticker" id="ann-ticker" style="accent-color:var(--gold);">
+        📡 Show in news ticker
+      </label>
+    </div>
+    <div style="display:flex;gap:0.75rem;flex-wrap:wrap;">
+      <button type="submit" class="btn btn-primary" id="ann-submit-btn">Post Announcement</button>
+      <button type="button" class="btn btn-outline btn-sm" id="ann-cancel-btn" style="display:none;" onclick="resetForm()">Cancel Edit</button>
+    </div>
+  </form>
+</div>
+
+<!-- Announcement List -->
+{% if announcements %}
+<div class="form-section">
+  <h2>All Announcements</h2>
+  <div style="display:flex;flex-direction:column;gap:1rem;">
+    {% for ann in announcements %}
+    <div style="background:var(--surface2);border:1px solid {% if ann.is_pinned %}var(--gold){% else %}var(--border){% endif %};border-radius:var(--radius);padding:1rem 1.25rem;">
+      <div style="display:flex;align-items:flex-start;gap:0.75rem;flex-wrap:wrap;">
+        <div style="flex:1;min-width:0;">
+          <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;margin-bottom:0.35rem;">
+            <span style="font-family:'Bebas Neue',sans-serif;font-size:1.1rem;color:var(--gold);letter-spacing:0.05em;">{{ ann.title }}</span>
+            {% if ann.is_pinned %}<span class="badge" style="background:rgba(212,175,55,0.15);color:var(--gold);border:1px solid rgba(212,175,55,0.3);">📌 Pinned</span>{% endif %}
+            {% if ann.is_ticker %}<span class="badge" style="background:rgba(99,102,241,0.15);color:#a5b4fc;border:1px solid rgba(99,102,241,0.3);">📡 Ticker</span>{% endif %}
+            {% if not ann.is_active %}<span class="badge badge-rejected">Hidden</span>{% endif %}
+          </div>
+          {% if ann.body %}<p style="font-size:0.85rem;color:var(--text-muted);white-space:pre-wrap;margin-bottom:0.35rem;">{{ ann.body[:200] }}{% if ann.body|length > 200 %}…{% endif %}</p>{% endif %}
+          <div style="font-size:0.72rem;color:var(--text-muted);">{{ ann.created_at | fmtdate }}</div>
+        </div>
+        <div style="display:flex;gap:0.5rem;flex-wrap:wrap;align-items:center;flex-shrink:0;">
+          <!-- Edit -->
+          <button class="btn btn-outline btn-sm" onclick="editAnn({{ ann.id }}, {{ ann.title|tojson }}, {{ ann.body|tojson }}, {{ ann.is_pinned }}, {{ ann.is_ticker }})">Edit</button>
+          <!-- Toggle active -->
+          <form method="post" action="{{ url_for('admin_announcement_toggle', ann_id=ann.id) }}" style="display:inline;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="field" value="is_active">
+            <button type="submit" class="btn btn-sm {% if ann.is_active %}btn-outline{% else %}btn-green{% endif %}">
+              {% if ann.is_active %}Hide{% else %}Show{% endif %}
+            </button>
+          </form>
+          <!-- Delete -->
+          <form method="post" action="{{ url_for('admin_announcement_delete', ann_id=ann.id) }}" style="display:inline;" onsubmit="return confirm('Delete this announcement?')">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn btn-red btn-sm">Delete</button>
+          </form>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% else %}
+<div class="empty-state"><p>No announcements yet. Create one above.</p></div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+function editAnn(id, title, body, isPinned, isTicker) {
+  document.getElementById('edit_id').value = id;
+  document.getElementById('ann-title').value = title;
+  document.getElementById('ann-body').value = body;
+  document.getElementById('ann-pinned').checked = !!isPinned;
+  document.getElementById('ann-ticker').checked = !!isTicker;
+  document.getElementById('ann-form-title').textContent = 'Edit Announcement';
+  document.getElementById('ann-submit-btn').textContent = 'Save Changes';
+  document.getElementById('ann-cancel-btn').style.display = 'inline-flex';
+  document.getElementById('ann-form-section').scrollIntoView({behavior:'smooth'});
+  document.getElementById('ann-title').focus();
+}
+function resetForm() {
+  document.getElementById('edit_id').value = '';
+  document.getElementById('ann-form').reset();
+  document.getElementById('ann-form-title').textContent = 'New Announcement';
+  document.getElementById('ann-submit-btn').textContent = 'Post Announcement';
+  document.getElementById('ann-cancel-btn').style.display = 'none';
+}
+</script>
+{% endblock %}

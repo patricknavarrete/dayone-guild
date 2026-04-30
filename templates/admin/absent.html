@@ -1,0 +1,95 @@
+{% extends 'admin/base.html' %}
+{% block title %}Absent List — Admin DayOne{% endblock %}
+
+{% block content %}
+<h1 class="page-title">🚫 Absent / No Response</h1>
+<p class="text-muted mb-3" style="font-size:0.85rem;">Members who marked Absent or haven't responded for the next upcoming events.</p>
+
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:1.5rem;">
+
+  <!-- Guild League -->
+  <div>
+    <h2 style="font-size:1.3rem;margin-bottom:0.75rem;color:var(--gold);">⚔ Guild League</h2>
+    {% if next_gl %}
+    <p class="text-muted" style="font-size:0.8rem;margin-bottom:1rem;">{{ next_gl | fmtdate }}</p>
+    {% endif %}
+
+    {% if gl_absent %}
+    <div style="margin-bottom:1rem;">
+      <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--absent);margin-bottom:0.5rem;">Absent ({{ gl_absent|length }})</div>
+      <ul style="list-style:none;display:flex;flex-direction:column;gap:0.35rem;">
+        {% for m in gl_absent %}
+        <li style="display:flex;align-items:center;gap:0.6rem;background:var(--surface);border:1px solid rgba(239,68,68,0.2);border-radius:var(--radius);padding:0.5rem 0.75rem;">
+          <span class="att-badge absent"></span>
+          <span style="flex:1;font-size:0.875rem;">{{ m.name }}</span>
+          <span style="font-size:0.72rem;color:var(--text-muted);">{{ m.job }}</span>
+        </li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+
+    {% if gl_nr %}
+    <div>
+      <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--grey);margin-bottom:0.5rem;">No Response ({{ gl_nr|length }})</div>
+      <ul style="list-style:none;display:flex;flex-direction:column;gap:0.35rem;">
+        {% for m in gl_nr %}
+        <li style="display:flex;align-items:center;gap:0.6rem;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:0.5rem 0.75rem;">
+          <span class="att-badge no-response"></span>
+          <span style="flex:1;font-size:0.875rem;">{{ m.name }}</span>
+          <span style="font-size:0.72rem;color:var(--text-muted);">{{ m.job }}</span>
+        </li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+
+    {% if not gl_absent and not gl_nr %}
+    <p class="text-muted" style="font-size:0.85rem;">Everyone responded — no absent or missing responses.</p>
+    {% endif %}
+  </div>
+
+  <!-- WoE -->
+  <div>
+    <h2 style="font-size:1.3rem;margin-bottom:0.75rem;color:var(--gold);">🏰 War of Emperium</h2>
+    {% if next_woe %}
+    <p class="text-muted" style="font-size:0.8rem;margin-bottom:1rem;">{{ next_woe | fmtdate }}</p>
+    {% endif %}
+
+    {% if woe_absent %}
+    <div style="margin-bottom:1rem;">
+      <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--absent);margin-bottom:0.5rem;">Absent ({{ woe_absent|length }})</div>
+      <ul style="list-style:none;display:flex;flex-direction:column;gap:0.35rem;">
+        {% for m in woe_absent %}
+        <li style="display:flex;align-items:center;gap:0.6rem;background:var(--surface);border:1px solid rgba(239,68,68,0.2);border-radius:var(--radius);padding:0.5rem 0.75rem;">
+          <span class="att-badge absent"></span>
+          <span style="flex:1;font-size:0.875rem;">{{ m.name }}</span>
+          <span style="font-size:0.72rem;color:var(--text-muted);">{{ m.job }}</span>
+        </li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+
+    {% if woe_nr %}
+    <div>
+      <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--grey);margin-bottom:0.5rem;">No Response ({{ woe_nr|length }})</div>
+      <ul style="list-style:none;display:flex;flex-direction:column;gap:0.35rem;">
+        {% for m in woe_nr %}
+        <li style="display:flex;align-items:center;gap:0.6rem;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:0.5rem 0.75rem;">
+          <span class="att-badge no-response"></span>
+          <span style="flex:1;font-size:0.875rem;">{{ m.name }}</span>
+          <span style="font-size:0.72rem;color:var(--text-muted);">{{ m.job }}</span>
+        </li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+
+    {% if not woe_absent and not woe_nr %}
+    <p class="text-muted" style="font-size:0.85rem;">Everyone responded — no absent or missing responses.</p>
+    {% endif %}
+  </div>
+
+</div>
+{% endblock %}

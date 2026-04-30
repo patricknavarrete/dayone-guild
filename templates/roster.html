@@ -59,8 +59,27 @@
 </div>
 {% endif %}
 
+{% if announcements %}
+<div class="announcements-section mb-3">
+  {% for ann in announcements %}
+  <div class="announcement-card {% if ann.is_pinned %}pinned{% endif %}">
+    <div class="ann-header">
+      {% if ann.is_pinned %}<span class="ann-pin">📌 PINNED</span>{% endif %}
+      <h3 class="ann-title">{{ ann.title }}</h3>
+      <span class="ann-date text-muted" style="font-size:0.75rem;">{{ ann.created_at[:10] }}</span>
+    </div>
+    {% if ann.body %}<div class="ann-body">{{ ann.body }}</div>{% endif %}
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<div class="roster-toolbar">
+  <input type="text" id="roster-search" class="form-control" placeholder="🔍  Search by name or job..." style="max-width:320px;">
+  <span class="text-muted" style="font-size:0.85rem;">{{ members|length }} member{{ 's' if members|length != 1 else '' }}</span>
+</div>
+
 {% if members %}
-  <p class="text-muted mb-2" style="font-size:0.85rem;">{{ members|length }} approved member{{ 's' if members|length != 1 else '' }}</p>
   <div class="card-grid">
     {% for m in members %}
     <div class="member-card">
@@ -77,6 +96,7 @@
         {% if m.notes %}
           <div class="notes">{{ m.notes }}</div>
         {% endif %}
+        <div class="activity-badge badge-{{ m.badge }}">{{ m.badge|upper }}</div>
       </div>
     </div>
     {% endfor %}
@@ -87,4 +107,20 @@
     <a href="{{ url_for('register') }}" class="btn btn-primary mt-2">Register</a>
   </div>
 {% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+const searchInput = document.getElementById('roster-search');
+if (searchInput) {
+  searchInput.addEventListener('input', function() {
+    const q = this.value.toLowerCase();
+    document.querySelectorAll('.member-card').forEach(card => {
+      const name = card.querySelector('h3')?.textContent.toLowerCase() || '';
+      const job = card.querySelector('.job-tag')?.textContent.toLowerCase() || '';
+      card.style.display = (name.includes(q) || job.includes(q)) ? '' : 'none';
+    });
+  });
+}
+</script>
 {% endblock %}

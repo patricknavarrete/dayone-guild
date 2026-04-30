@@ -50,6 +50,9 @@
         <li style="padding:0.5rem 0.75rem;color:var(--text-muted);font-size:0.8rem;">Empty</li>
         {% endfor %}
       </ul>
+      {% if party.notes %}
+      <div class="party-notes">📝 {{ party.notes }}</div>
+      {% endif %}
     </div>
     {% endfor %}
   </div>

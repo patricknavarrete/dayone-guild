@@ -27,6 +27,15 @@
         <div class="stat-label">Status</div>
         <div class="stat-value"><span class="badge badge-approved">Approved</span></div>
       </div>
+      <div class="stat-item">
+        <div class="stat-label">Attendance (4wk)</div>
+        <div class="stat-value">
+          <div style="font-size:0.9rem;">{{ att_rate.attended }}/{{ att_rate.total }}
+            <span style="color:{% if att_rate.pct >= 70 %}var(--green){% elif att_rate.pct >= 40 %}#fbbf24{% else %}var(--absent){% endif %};">({{ att_rate.pct }}%)</span>
+          </div>
+          <div class="att-rate-bar"><div class="att-rate-fill" style="width:{{ att_rate.pct }}%;background:{% if att_rate.pct >= 70 %}var(--green){% elif att_rate.pct >= 40 %}#fbbf24{% else %}var(--absent){% endif %};"></div></div>
+        </div>
+      </div>
     </div>
     {% if member.notes %}
       <div style="margin-top:0.75rem;font-size:0.875rem;color:var(--text-muted);">{{ member.notes }}</div>

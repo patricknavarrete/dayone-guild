@@ -11,6 +11,18 @@
   {% block head %}{% endblock %}
 </head>
 <body>
+  {% set tickers = ticker_items() %}
+  {% if tickers %}
+  <div class="news-ticker">
+    <span class="ticker-label">📢 NEWS</span>
+    <div class="ticker-track">
+      <div class="ticker-content">
+        {% for t in tickers %}<span class="ticker-item">{{ t.title }}</span>{% endfor %}
+        {% for t in tickers %}<span class="ticker-item">{{ t.title }}</span>{% endfor %}
+      </div>
+    </div>
+  </div>
+  {% endif %}
   {% if session.member_id %}
   <nav class="navbar">
     <a href="{{ url_for('roster') }}" class="navbar-brand">
@@ -22,6 +34,7 @@
     <ul class="nav-links">
       <li><a href="{{ url_for('roster') }}">Roster</a></li>
       <li><a href="{{ url_for('officers') }}">Officers</a></li>
+      <li><a href="{{ url_for('announcements') }}">Announcements</a></li>
       <li><a href="{{ url_for('guild_league') }}">Guild League</a></li>
       <li><a href="{{ url_for('woe') }}">WoE</a></li>
       <li><a href="{{ url_for('profile') }}">My Profile</a></li>

@@ -25,7 +25,7 @@ MAX_CONTENT_LENGTH = 16 * 1024 * 1024
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = MAX_CONTENT_LENGTH
 
-SUPPORT_JOBS = {'High Priest', 'Bard', 'Dancer'}
+SUPPORT_JOBS = {'High Priest', 'Bard', 'Dancer', 'Summoner', 'Apprentice'}
 
 PHT = timezone(timedelta(hours=8))
 GL_EVENT_HOUR    = 20   # 8 PM PHT
@@ -94,8 +94,22 @@ app.config['MAIL_DEFAULT_SENDER'] = os.environ.get(
 mail = Mail(app)
 
 
+def _coerce_date(d):
+    if not d:
+        return None
+    if isinstance(d, str):
+        for fmt in ('%Y-%m-%d %H:%M:%S', '%Y-%m-%d %H:%M:%S.%f', '%Y-%m-%d'):
+            try:
+                return datetime.strptime(d[:len(fmt)], fmt)
+            except ValueError:
+                continue
+        return None
+    return d
+
+
 @app.template_filter('fmtdate')
 def fmtdate(d):
+    d = _coerce_date(d)
     if not d:
         return ''
     return d.strftime('%A, %B ') + str(d.day) + d.strftime(', %Y')
@@ -103,6 +117,7 @@ def fmtdate(d):
 
 @app.template_filter('fmtdate_noyear')
 def fmtdate_noyear(d):
+    d = _coerce_date(d)
     if not d:
         return ''
     return d.strftime('%A, %B ') + str(d.day)
@@ -110,6 +125,7 @@ def fmtdate_noyear(d):
 
 @app.template_filter('fmtdate_mini')
 def fmtdate_mini(d):
+    d = _coerce_date(d)
     if not d:
         return ''
     return d.strftime('%b ') + str(d.day)
@@ -124,8 +140,21 @@ def _get_csrf_token() -> str:
 
 
 @app.context_processor
-def _inject_csrf():
-    return dict(csrf_token=_get_csrf_token)
+def _inject_globals():
+    def ticker():
+        try:
+            db = get_db()
+            return db.execute(
+                "SELECT title FROM announcements WHERE is_active=1 AND is_ticker=1 ORDER BY is_pinned DESC, created_at DESC LIMIT 5"
+            ).fetchall()
+        except Exception:
+            return []
+    def recruit():
+        try:
+            return get_recruitment_status(get_db())
+        except Exception:
+            return 'open'
+    return dict(csrf_token=_get_csrf_token, ticker_items=ticker, recruitment_status=recruit)
 
 
 def csrf_protect(f):
@@ -177,15 +206,62 @@ def close_connection(exception):
         db.close()
 
 
+def _migrate_db(db):
+    migrations = [
+        "ALTER TABLE gl_parties ADD COLUMN notes TEXT DEFAULT ''",
+        "ALTER TABLE woe_parties ADD COLUMN notes TEXT DEFAULT ''",
+    ]
+    for sql in migrations:
+        try:
+            db.execute(sql)
+        except sqlite3.OperationalError:
+            pass
+    db.commit()
+
+
 def init_db():
     db = get_db()
     schema_path = os.path.join(os.path.dirname(__file__), 'schema.sql')
     with open(schema_path, 'r', encoding='utf-8') as f:
         db.executescript(f.read())
     db.commit()
+    _migrate_db(db)
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
+
+def get_recruitment_status(db):
+    row = db.execute("SELECT value FROM settings WHERE key='recruitment'").fetchone()
+    return row['value'] if row else 'open'
+
+
+def get_attendance_rate(db, member_id, weeks=4):
+    today = datetime.now(PHT).date()
+    cutoff = today - timedelta(weeks=weeks)
+    rows = db.execute(
+        "SELECT status FROM attendance WHERE member_id=? AND event_date >= ?",
+        (member_id, str(cutoff))
+    ).fetchall()
+    total = len(rows)
+    attended = sum(1 for r in rows if r['status'] == 'attending')
+    pct = round(attended / total * 100) if total else 0
+    return {'attended': attended, 'total': total, 'pct': pct}
+
+
+def get_activity_badge(db, member_id):
+    today = datetime.now(PHT).date()
+    recent = db.execute(
+        "SELECT COUNT(*) as c FROM attendance WHERE member_id=? AND event_date >= ? AND status='attending'",
+        (member_id, str(today - timedelta(days=14)))
+    ).fetchone()['c']
+    if recent > 0:
+        return 'active'
+    any_recent = db.execute(
+        "SELECT COUNT(*) as c FROM attendance WHERE member_id=? AND event_date >= ?",
+        (member_id, str(today - timedelta(days=30)))
+    ).fetchone()['c']
+    return 'away' if any_recent > 0 else 'inactive'
+
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
@@ -346,7 +422,8 @@ def register():
 
     a, b = random.randint(1, 12), random.randint(1, 12)
     session['captcha_answer'] = a + b
-    return render_template('register.html', captcha_q=f"{a} + {b}")
+    recruit = get_recruitment_status(get_db())
+    return render_template('register.html', captcha_q=f"{a} + {b}", recruitment=recruit)
 
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -372,7 +449,9 @@ def login():
         session['member_id'] = member['id']
         session['member_name'] = member['name']
         return redirect(url_for('roster'))
-    return render_template('login.html')
+    db = get_db()
+    recruit = get_recruitment_status(db)
+    return render_template('login.html', recruitment=recruit)
 
 
 @app.route('/logout')
@@ -476,15 +555,25 @@ def officers():
 @login_required
 def roster():
     db = get_db()
-    members = db.execute(
+    raw_members = db.execute(
         "SELECT id, name, job, photo_path, notes FROM members WHERE status='approved' ORDER BY name"
     ).fetchall()
+    members = []
+    for m in raw_members:
+        members.append({
+            'id': m['id'], 'name': m['name'], 'job': m['job'],
+            'photo_path': m['photo_path'], 'notes': m['notes'],
+            'badge': get_activity_badge(db, m['id'])
+        })
     events = get_next_event_dates()
     mid = session['member_id']
     gl_att  = get_attendance(mid, 'guild_league', events['gl_next'])
     woe_att = get_attendance(mid, 'woe', events['woe_next'])
+    announcements = db.execute(
+        "SELECT * FROM announcements WHERE is_active=1 ORDER BY is_pinned DESC, created_at DESC LIMIT 5"
+    ).fetchall()
     return render_template('roster.html', members=members, events=events,
-                           gl_att=gl_att, woe_att=woe_att)
+                           gl_att=gl_att, woe_att=woe_att, announcements=announcements)
 
 
 @app.route('/guild-league')
@@ -515,7 +604,7 @@ def guild_league():
             'attendance': get_attendance(r['id'], 'guild_league', next_gl),
             'is_support': is_support(r['job'])
         } for r in rows]
-        parties.append({'id': p['id'], 'name': p['name'], 'is_sub': p['is_sub'], 'members': members})
+        parties.append({'id': p['id'], 'name': p['name'], 'is_sub': p['is_sub'], 'members': members, 'notes': p['notes'] or ''})
 
     return render_template('guild_league.html', parties=parties,
                            next_gl=next_gl, gl_att=gl_att,
@@ -550,7 +639,7 @@ def woe():
             'attendance': get_attendance(r['id'], 'woe', next_woe),
             'is_support': is_support(r['job'])
         } for r in rows]
-        parties.append({'id': p['id'], 'name': p['name'], 'members': members})
+        parties.append({'id': p['id'], 'name': p['name'], 'members': members, 'notes': p['notes'] or ''})
 
     return render_template('woe.html', parties=parties,
                            next_woe=next_woe, woe_att=woe_att,
@@ -703,7 +792,8 @@ def profile():
         "SELECT * FROM pending_updates WHERE member_id=? AND status='rejected' ORDER BY created_at DESC LIMIT 5",
         (mid,)
     ).fetchall()
-    return render_template('profile.html', member=member, pending=pending, rejected=rejected)
+    att_rate = get_attendance_rate(db, mid)
+    return render_template('profile.html', member=member, pending=pending, rejected=rejected, att_rate=att_rate)
 
 
 @app.route('/attendance', methods=['POST'])
@@ -791,7 +881,10 @@ def admin_index():
     pm    = db.execute("SELECT COUNT(*) as c FROM members WHERE status='pending'").fetchone()['c']
     pu    = db.execute("SELECT COUNT(*) as c FROM pending_updates WHERE status='pending'").fetchone()['c']
     total = db.execute("SELECT COUNT(*) as c FROM members WHERE status='approved'").fetchone()['c']
-    return render_template('admin/index.html', pending_members=pm, pending_updates=pu, total_members=total)
+    ann_count = db.execute("SELECT COUNT(*) as c FROM announcements WHERE is_active=1").fetchone()['c']
+    recruit = get_recruitment_status(db)
+    return render_template('admin/index.html', pending_members=pm, pending_updates=pu,
+                           total_members=total, ann_count=ann_count, recruitment=recruit)
 
 
 # ── Admin Officers ───────────────────────────────────────────────────────────
@@ -1085,7 +1178,7 @@ def _build_party_data(db, party_table, member_table, event_type, next_date):
                 'attendance': get_attendance(r['id'], event_type, next_date),
                 'is_support': is_support(r['job'])
             })
-        entry = {'id': p['id'], 'name': p['name'], 'members': members}
+        entry = {'id': p['id'], 'name': p['name'], 'members': members, 'notes': p.get('notes', '') or ''}
         if party_table == 'gl_parties':
             entry['is_sub'] = p['is_sub']
         parties.append(entry)
@@ -1368,6 +1461,146 @@ def _enforce_support(db, party_table, member_table):
 
         if not swapped:
             break
+
+
+# ── Announcements (member-facing) ────────────────────────────────────────────
+
+@app.route('/announcements')
+@login_required
+def announcements():
+    db = get_db()
+    items = db.execute(
+        "SELECT * FROM announcements WHERE is_active=1 ORDER BY is_pinned DESC, created_at DESC"
+    ).fetchall()
+    return render_template('announcements.html', announcements=items)
+
+
+# ── Admin Absent List ─────────────────────────────────────────────────────────
+
+@app.route('/admin/absent')
+@admin_required
+def admin_absent():
+    db = get_db()
+    events = get_next_event_dates()
+    next_gl = events['gl_next']
+    next_woe = events['woe_next']
+    def build_absent(event_type, event_date):
+        if not event_date:
+            return [], []
+        members = db.execute(
+            "SELECT id, name, job FROM members WHERE status='approved' ORDER BY name"
+        ).fetchall()
+        att_map = {r['member_id']: r['status'] for r in db.execute(
+            "SELECT member_id, status FROM attendance WHERE event_type=? AND event_date=?",
+            (event_type, str(event_date))
+        ).fetchall()}
+        absent = [{'id': m['id'], 'name': m['name'], 'job': m['job']}
+                  for m in members if att_map.get(m['id']) == 'absent']
+        no_resp = [{'id': m['id'], 'name': m['name'], 'job': m['job']}
+                   for m in members if not att_map.get(m['id'])]
+        return absent, no_resp
+    gl_absent, gl_nr = build_absent('guild_league', next_gl)
+    woe_absent, woe_nr = build_absent('woe', next_woe)
+    return render_template('admin/absent.html',
+                           gl_absent=gl_absent, gl_nr=gl_nr, next_gl=next_gl,
+                           woe_absent=woe_absent, woe_nr=woe_nr, next_woe=next_woe)
+
+
+# ── Admin Announcements ───────────────────────────────────────────────────────
+
+@app.route('/admin/announcements', methods=['GET', 'POST'])
+@admin_required
+@csrf_protect
+def admin_announcements():
+    db = get_db()
+    if request.method == 'POST':
+        title = request.form.get('title', '').strip()
+        body = request.form.get('body', '').strip()
+        is_pinned = 1 if request.form.get('is_pinned') else 0
+        is_ticker = 1 if request.form.get('is_ticker') else 0
+        edit_id = request.form.get('edit_id', '').strip()
+        if not title:
+            flash('Title is required.', 'error')
+        elif edit_id:
+            db.execute(
+                "UPDATE announcements SET title=?, body=?, is_pinned=?, is_ticker=?, updated_at=CURRENT_TIMESTAMP WHERE id=?",
+                (title, body, is_pinned, is_ticker, int(edit_id))
+            )
+            db.commit()
+            flash('Announcement updated.', 'success')
+        else:
+            db.execute(
+                "INSERT INTO announcements (title, body, is_pinned, is_ticker) VALUES (?,?,?,?)",
+                (title, body, is_pinned, is_ticker)
+            )
+            db.commit()
+            flash('Announcement posted.', 'success')
+        return redirect(url_for('admin_announcements'))
+    items = db.execute("SELECT * FROM announcements ORDER BY is_pinned DESC, created_at DESC").fetchall()
+    return render_template('admin/announcements.html', announcements=items)
+
+
+@app.route('/admin/announcements/<int:ann_id>/delete', methods=['POST'])
+@admin_required
+@csrf_protect
+def admin_announcement_delete(ann_id):
+    db = get_db()
+    db.execute("DELETE FROM announcements WHERE id=?", (ann_id,))
+    db.commit()
+    flash('Announcement deleted.', 'success')
+    return redirect(url_for('admin_announcements'))
+
+
+@app.route('/admin/announcements/<int:ann_id>/toggle', methods=['POST'])
+@admin_required
+@csrf_protect
+def admin_announcement_toggle(ann_id):
+    field = request.form.get('field', 'is_active')
+    if field not in ('is_active', 'is_pinned', 'is_ticker'):
+        abort(400)
+    db = get_db()
+    db.execute(f"UPDATE announcements SET {field} = 1 - {field} WHERE id=?", (ann_id,))
+    db.commit()
+    return redirect(url_for('admin_announcements'))
+
+
+# ── Admin Recruitment Toggle ──────────────────────────────────────────────────
+
+@app.route('/admin/settings/recruitment', methods=['POST'])
+@admin_required
+@csrf_protect
+def admin_toggle_recruitment():
+    db = get_db()
+    current = get_recruitment_status(db)
+    new_val = 'closed' if current == 'open' else 'open'
+    db.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('recruitment', ?)", (new_val,))
+    db.commit()
+    flash(f"Recruitment is now {'Open' if new_val == 'open' else 'Closed'}.", 'success')
+    return redirect(url_for('admin_index'))
+
+
+# ── Party Notes ───────────────────────────────────────────────────────────────
+
+@app.route('/admin/parties/guild-league/<int:party_id>/notes', methods=['POST'])
+@admin_required
+@csrf_protect
+def admin_gl_save_notes(party_id):
+    notes = request.form.get('notes', '').strip()
+    db = get_db()
+    db.execute("UPDATE gl_parties SET notes=? WHERE id=?", (notes, party_id))
+    db.commit()
+    return redirect(url_for('admin_gl_parties'))
+
+
+@app.route('/admin/parties/woe/<int:party_id>/notes', methods=['POST'])
+@admin_required
+@csrf_protect
+def admin_woe_save_notes(party_id):
+    notes = request.form.get('notes', '').strip()
+    db = get_db()
+    db.execute("UPDATE woe_parties SET notes=? WHERE id=?", (notes, party_id))
+    db.commit()
+    return redirect(url_for('admin_woe_parties'))
 
 
 # ── Init & Run ────────────────────────────────────────────────────────────────

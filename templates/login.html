@@ -16,6 +16,11 @@
         <span class="guild-name">DayOne</span>
       </div>
       <h2>Member Login</h2>
+      {% if recruitment == 'closed' %}
+      <div class="recruit-badge closed">🔴 Guild is not currently recruiting</div>
+      {% else %}
+      <div class="recruit-badge open">🟢 Guild is open to new members!</div>
+      {% endif %}
 
       {% with messages = get_flashed_messages(with_categories=true) %}
         {% for category, message in messages %}

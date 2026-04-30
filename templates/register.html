@@ -17,6 +17,11 @@
       </div>
       <h1 style="font-size:1.8rem;margin-top:0.5rem;color:var(--gold);">Guild Registration</h1>
       <p class="text-muted" style="font-size:0.875rem;margin-top:0.25rem;">Fill in your details. An admin will review and approve your account.</p>
+      {% if recruitment == 'closed' %}
+      <div class="recruit-badge closed" style="margin-top:0.75rem;">🔴 Guild is not currently recruiting</div>
+      {% else %}
+      <div class="recruit-badge open" style="margin-top:0.75rem;">🟢 Guild is open to new members!</div>
+      {% endif %}
     </div>
 
     {% with messages = get_flashed_messages(with_categories=true) %}

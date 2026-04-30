@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python3 -c \"import app; print\\('OK'\\)\")",
+      "Bash(python3 -m py_compile app.py)",
+      "Bash(git add *)"
+    ]
+  }
+}

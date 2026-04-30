@@ -481,14 +481,36 @@ def forgot_password():
                     msg.body = (
                         f"Hello {member['name']},\n\n"
                         f"You requested a password reset for your DayOne Guild account.\n\n"
-                        f"Click the link below to reset your password (valid for 1 hour):\n"
-                        f"{reset_url}\n\n"
-                        f"If you did not request this, you can safely ignore this email.\n\n"
-                        f"— DayOne Guild"
+                        f"Reset link (valid for 1 hour):\n{reset_url}\n\n"
+                        f"If you did not request this, ignore this email.\n\n— DayOne Guild"
                     )
+                    msg.html = f"""
+<div style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto;background:#fff;border:1px solid #e6ddd0;border-radius:12px;overflow:hidden;">
+  <div style="background:linear-gradient(135deg,#140c0c,#2d1212);padding:28px 32px;text-align:center;border-bottom:3px solid #c91f1f;">
+    <div style="font-family:'Arial Black',Arial,sans-serif;font-size:28px;font-weight:900;color:#d4af37;letter-spacing:6px;">DAYONE</div>
+    <div style="font-size:11px;color:rgba(255,255,255,0.5);letter-spacing:3px;text-transform:uppercase;margin-top:4px;">Guild Management</div>
+  </div>
+  <div style="padding:32px;">
+    <h2 style="font-size:20px;color:#1c1710;margin:0 0 12px;">Password Reset Request</h2>
+    <p style="color:#7a6d60;font-size:15px;line-height:1.6;margin:0 0 24px;">
+      Hi <strong style="color:#1c1710;">{member['name']}</strong>,<br>
+      We received a request to reset your DayOne Guild account password.
+      Click the button below to set a new password. This link expires in <strong>1 hour</strong>.
+    </p>
+    <div style="text-align:center;margin:28px 0;">
+      <a href="{reset_url}" style="display:inline-block;background:#c91f1f;color:#fff;font-weight:700;font-size:15px;padding:13px 32px;border-radius:8px;text-decoration:none;letter-spacing:0.5px;">Reset My Password</a>
+    </div>
+    <p style="color:#9ca3af;font-size:12px;line-height:1.5;border-top:1px solid #e6ddd0;padding-top:16px;margin:0;">
+      If the button doesn't work, copy and paste this link:<br>
+      <a href="{reset_url}" style="color:#a87418;word-break:break-all;">{reset_url}</a>
+    </p>
+    <p style="color:#9ca3af;font-size:12px;margin:12px 0 0;">If you didn't request this, you can safely ignore this email.</p>
+  </div>
+</div>"""
                     mail.send(msg)
-                except Exception:
-                    flash('Could not send email. Please check mail settings or contact the admin.', 'error')
+                except Exception as e:
+                    app.logger.error(f"Password reset email failed: {e}")
+                    flash('Could not send email. Please contact the admin.', 'error')
                     return render_template('forgot_password.html')
         flash('If that email is registered and approved, a reset link has been sent.', 'info')
         return redirect(url_for('login'))

@@ -28,8 +28,10 @@ app.config['MAX_CONTENT_LENGTH'] = MAX_CONTENT_LENGTH
 SUPPORT_JOBS = {'High Priest', 'Bard', 'Dancer'}
 
 PHT = timezone(timedelta(hours=8))
-GL_EVENT_HOUR  = 20   # 8 PM PHT — change if your GL starts at a different time
-WOE_EVENT_HOUR = 20   # 8 PM PHT — change if your WoE starts at a different time
+GL_EVENT_HOUR    = 20   # 8 PM PHT
+GL_EVENT_MINUTE  = 55   # :55
+WOE_EVENT_HOUR   = 20   # 8 PM PHT
+WOE_EVENT_MINUTE = 55   # :55
 
 # ── Brute-force tracking for admin login ──────────────────────────────────────
 
@@ -222,9 +224,9 @@ def get_next_event_dates():
         if gl_next and woe_next:
             break
     gl_dt = datetime(gl_next.year, gl_next.month, gl_next.day,
-                     GL_EVENT_HOUR, 0, 0, tzinfo=PHT) if gl_next else None
+                     GL_EVENT_HOUR, GL_EVENT_MINUTE, 0, tzinfo=PHT) if gl_next else None
     woe_dt = datetime(woe_next.year, woe_next.month, woe_next.day,
-                      WOE_EVENT_HOUR, 0, 0, tzinfo=PHT) if woe_next else None
+                      WOE_EVENT_HOUR, WOE_EVENT_MINUTE, 0, tzinfo=PHT) if woe_next else None
     return {
         'gl_next':    gl_next,
         'woe_next':   woe_next,

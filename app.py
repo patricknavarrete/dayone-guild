@@ -1247,7 +1247,7 @@ def _build_party_data(db, party_table, member_table, event_type, next_date):
                 'attendance': get_attendance(r['id'], event_type, next_date),
                 'is_support': is_support(r['job'])
             })
-        entry = {'id': p['id'], 'name': p['name'], 'members': members, 'notes': p.get('notes', '') or ''}
+        entry = {'id': p['id'], 'name': p['name'], 'members': members, 'notes': (p['notes'] if 'notes' in p.keys() else '') or ''}
         if party_table == 'gl_parties':
             entry['is_sub'] = p['is_sub']
         parties.append(entry)

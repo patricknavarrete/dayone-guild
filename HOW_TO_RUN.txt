@@ -1,0 +1,219 @@
+================================================================
+  DAYONE GUILD APP — HOW TO RUN LOCALLY & DEPLOY
+================================================================
+
+
+----------------------------------------------------------------
+  REQUIREMENTS
+----------------------------------------------------------------
+
+- Python (download from https://www.python.org/downloads/)
+  Make sure to check "Add Python to PATH" during install.
+
+- Git (download from https://git-scm.com/downloads)
+  Install with default settings.
+
+
+----------------------------------------------------------------
+  FIRST TIME SETUP (do this only once)
+----------------------------------------------------------------
+
+1. Open CMD and go to the project folder:
+
+   cd "C:\Users\PC\Desktop\Guild Management"
+
+
+2. Install the required packages:
+
+   py -m pip install flask werkzeug flask-mail itsdangerous gunicorn
+
+
+3. That's it. The database (dayone.db) is created automatically
+   when you first run the app.
+
+
+----------------------------------------------------------------
+  HOW TO RUN LOCALLY
+----------------------------------------------------------------
+
+1. Open CMD
+
+2. Navigate to the project folder:
+
+   cd "C:\Users\PC\Desktop\Guild Management"
+
+3. Start the app:
+
+   py -m flask run
+
+4. Open your browser and go to:
+
+   http://127.0.0.1:5000
+
+5. To stop the server, press CTRL+C in CMD.
+
+
+----------------------------------------------------------------
+  FIRST TIME USING THE APP
+----------------------------------------------------------------
+
+1. Go to:  http://127.0.0.1:5000/register
+   - Register your character
+
+2. Go to:  http://127.0.0.1:5000/admin/login
+   - Password: admin1234
+   - Go to Approvals and approve your registration
+
+3. Go to:  http://127.0.0.1:5000/login
+   - Log in with your registered account
+
+
+----------------------------------------------------------------
+  ADMIN PANEL
+----------------------------------------------------------------
+
+URL:       http://127.0.0.1:5000/admin/login
+Password:  admin1234
+
+From the admin panel you can:
+- Approve or reject member registrations
+- Approve or reject member update requests
+- View attendance for Guild League and WoE
+- Manage Guild League parties (drag & drop or auto-distribute)
+- Manage WoE parties (drag & drop or random auto-distribute)
+
+
+----------------------------------------------------------------
+  PAGES & URLS
+----------------------------------------------------------------
+
+/               - Redirects to login
+/register       - Public registration form
+/login          - Member login
+/logout         - Logout
+/roster         - Guild member roster (login required)
+/guild-league   - Guild League parties (login required)
+/woe            - WoE parties (login required)
+/profile        - Your profile and settings (login required)
+/admin/login    - Admin login (separate from member login)
+/admin          - Admin dashboard
+
+
+----------------------------------------------------------------
+  GUILD LEAGUE & WOE SCHEDULE
+----------------------------------------------------------------
+
+Guild League  — every Tuesday and Thursday
+WoE           — every Sunday
+
+Members can mark Attend or Absent from the Roster page,
+Guild League page, or WoE page.
+
+
+----------------------------------------------------------------
+  HOW TO PUSH UPDATES & REDEPLOY (after changes)
+----------------------------------------------------------------
+
+1. Open CMD in the project folder:
+
+   cd "C:\Users\PC\Desktop\Guild Management"
+
+2. Run these 3 commands:
+
+   git add .
+   git commit -m "describe what you changed"
+   git push
+
+3. Render will automatically detect the push and redeploy.
+   Watch the build in: Render Dashboard > your service > Logs
+   Takes about 1-2 minutes.
+
+
+----------------------------------------------------------------
+  EMAIL / PASSWORD RESET SETUP (optional)
+----------------------------------------------------------------
+
+To enable the Forgot Password feature, set these in CMD
+before running the app (or set them in Render's Environment):
+
+   set MAIL_USERNAME=youremail@gmail.com
+   set MAIL_PASSWORD=your-gmail-app-password
+   set MAIL_DEFAULT_SENDER=youremail@gmail.com
+   py -m flask run
+
+Gmail App Password:
+  Google Account > Security > 2-Step Verification > App Passwords
+  Generate one for "Mail"
+
+
+----------------------------------------------------------------
+  DATABASE
+----------------------------------------------------------------
+
+The database file is: dayone.db (in the project folder)
+It is created automatically on first run.
+
+To view/edit the database visually (locally):
+- Download DB Browser for SQLite: https://sqlitebrowser.org
+- Open dayone.db with it
+
+The dayone.db file is excluded from Git (.gitignore)
+so it won't be pushed to GitHub.
+
+
+----------------------------------------------------------------
+  PROJECT FOLDER STRUCTURE
+----------------------------------------------------------------
+
+Guild Management/
+├── app.py                  Main Flask application
+├── schema.sql              Database table definitions
+├── requirements.txt        Python package list
+├── render.yaml             Render.com deployment config
+├── HOW_TO_RUN.txt          This file
+├── .gitignore              Files excluded from Git
+├── dayone.db               SQLite database (auto-created)
+├── static/
+│   ├── css/style.css       Dark theme styles
+│   ├── js/main.js          Frontend scripts
+│   └── uploads/            Uploaded member photos & screenshots
+└── templates/
+    ├── base.html           Base layout (member pages)
+    ├── login.html
+    ├── register.html
+    ├── roster.html
+    ├── guild_league.html
+    ├── woe.html
+    ├── profile.html
+    ├── forgot_password.html
+    ├── reset_password.html
+    └── admin/
+        ├── base.html       Base layout (admin pages)
+        ├── login.html
+        ├── index.html
+        ├── approvals.html
+        ├── updates.html
+        ├── attendance.html
+        ├── attendance_history.html
+        ├── party_gl.html
+        └── party_woe.html
+
+
+----------------------------------------------------------------
+  SUPPORT JOBS (highlighted in party cards)
+----------------------------------------------------------------
+
+High Priest, Bard, Dancer
+
+
+----------------------------------------------------------------
+  DEFAULT CREDENTIALS
+----------------------------------------------------------------
+
+Admin password:   admin1234
+                  (change this in Render > Environment > ADMIN_PASSWORD)
+
+Member login:     Register first, then get approved by admin
+
+
+================================================================

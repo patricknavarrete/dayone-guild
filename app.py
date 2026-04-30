@@ -650,6 +650,21 @@ def admin_index():
     return render_template('admin/index.html', pending_members=pm, pending_updates=pu, total_members=total)
 
 
+# ── Admin Members Roster ─────────────────────────────────────────────────────
+
+@app.route('/admin/members')
+@admin_required
+def admin_members():
+    db = get_db()
+    members = db.execute(
+        """SELECT id, name, username, job, power, photo_path,
+                  power_screenshot_path, equipment_screenshot_path,
+                  quasi_stats_screenshot_path, created_at
+           FROM members WHERE status='approved' ORDER BY power DESC"""
+    ).fetchall()
+    return render_template('admin/members.html', members=members)
+
+
 # ── Admin Member Approvals ────────────────────────────────────────────────────
 
 @app.route('/admin/approvals')

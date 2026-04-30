@@ -15,7 +15,7 @@ from werkzeug.utils import secure_filename
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'dayone-dev-secret-change-in-prod')
 ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', 'admin1234')
-DATABASE = os.environ.get('DATABASE_PATH', '/data/dayone.db')
+DATABASE = '/data/dayone.db'
 UPLOAD_FOLDER = os.path.join('static', 'uploads')
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
 MAX_CONTENT_LENGTH = 16 * 1024 * 1024
@@ -126,7 +126,8 @@ def init_db():
     db = get_db()
 
     schema_path = os.path.join(os.path.dirname(__file__), 'schema.sql')
-    with open(schema_path, 'r') as f:
+
+    with open(schema_path, 'r', encoding='utf-8') as f:
         db.executescript(f.read())
 
     db.commit()
@@ -1235,7 +1236,8 @@ def _enforce_support(db, party_table, member_table):
 
 
 # ── Init & Run ────────────────────────────────────────────────────────────────
-if __name__ == '__main__':
-    with app.app_context():
-        init_db()
+with app.app_context():
+    init_db()
+
+if __name__ == "__main__":
     app.run(debug=True)

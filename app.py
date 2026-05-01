@@ -508,7 +508,8 @@ def home():
         "SELECT * FROM announcements WHERE is_active=1 ORDER BY is_pinned DESC, created_at DESC LIMIT 6"
     ).fetchall()
 
-    att_rate = get_attendance_rate(db, mid)
+    att_rate_data = get_attendance_rate(db, mid)
+    att_rate = att_rate_data['pct']
     member   = db.execute("SELECT name, job, photo_path FROM members WHERE id=?", (mid,)).fetchone()
 
     return render_template('home.html',

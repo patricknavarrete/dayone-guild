@@ -4,8 +4,9 @@
 {% block content %}
 <h1 class="page-title">🏰 War of Emperium Parties</h1>
 <div class="find-party-bar">
-  <input type="text" id="party-search" class="form-control" placeholder="🔍 Search member name..." style="max-width:260px;">
-  <button class="btn btn-outline btn-sm" id="find-my-party-btn" type="button">⚔ Find My Party</button>
+  <input type="text" id="party-search" class="form-control" placeholder="🔍 Type 3+ letters to search..." autocomplete="off" autocorrect="off" spellcheck="false">
+  <span class="search-hint">Press Enter or type 3+ letters</span>
+  <button class="btn btn-outline btn-sm" id="find-my-party-btn" type="button">🏰 Find My Party</button>
 </div>
 
 {% if next_woe %}
@@ -145,38 +146,60 @@ document.querySelectorAll('.att-actions form').forEach(form => {
 
 // Party member search + Find My Party
 const partySearch = document.getElementById('party-search');
+let _searchTimer = null;
 
-function highlightPartySearch(q) {
-  document.querySelectorAll('.party-card').forEach(card => card.classList.remove('party-highlight'));
-  document.querySelectorAll('.party-member-row').forEach(row => row.classList.remove('row-highlight'));
-  if (!q) return;
+function clearPartyHighlights() {
+  document.querySelectorAll('.party-card').forEach(c => c.classList.remove('party-highlight'));
+  document.querySelectorAll('.party-member-row').forEach(r => r.classList.remove('row-highlight'));
+}
+
+function runPartySearch(q, scroll) {
+  clearPartyHighlights();
+  if (!q || q.length < 3) return;
   const ql = q.toLowerCase();
+  let found = false;
   document.querySelectorAll('.party-member-row').forEach(row => {
     const name = (row.dataset.name || row.querySelector('.member-name')?.textContent || '').toLowerCase();
     if (name.includes(ql)) {
       row.classList.add('row-highlight');
       row.closest('.party-card')?.classList.add('party-highlight');
+      found = true;
     }
   });
-  const first = document.querySelector('.party-card.party-highlight');
-  if (first) first.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  if (scroll && found) {
+    const first = document.querySelector('.party-card.party-highlight');
+    if (first) first.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+  return found;
 }
 
 if (partySearch) {
-  partySearch.addEventListener('input', function() { highlightPartySearch(this.value.trim()); });
+  partySearch.addEventListener('input', function() {
+    const val = this.value.trim();
+    clearTimeout(_searchTimer);
+    if (val.length === 0) { clearPartyHighlights(); return; }
+    if (val.length < 3) return;
+    _searchTimer = setTimeout(() => runPartySearch(val, false), 300);
+  });
+  partySearch.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') {
+      clearTimeout(_searchTimer);
+      runPartySearch(this.value.trim(), true);
+    }
+  });
 }
 
 document.getElementById('find-my-party-btn')?.addEventListener('click', function() {
+  partySearch && (partySearch.value = '');
+  clearPartyHighlights();
   const myRow = document.querySelector('.party-member-row[data-me="1"]');
   if (myRow) {
-    document.querySelectorAll('.party-card').forEach(c => c.classList.remove('party-highlight'));
-    document.querySelectorAll('.party-member-row').forEach(r => r.classList.remove('row-highlight'));
     myRow.classList.add('row-highlight');
     myRow.closest('.party-card')?.classList.add('party-highlight');
     myRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
   } else {
-    const bar = document.querySelector('.find-party-bar');
-    if (bar) { bar.style.color = 'var(--red)'; setTimeout(() => bar.style.color = '', 2000); }
+    this.textContent = '✕ Not Assigned';
+    setTimeout(() => { this.textContent = '🏰 Find My Party'; }, 2500);
   }
 });
 </script>

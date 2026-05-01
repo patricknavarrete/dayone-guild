@@ -2,7 +2,23 @@
 const menuToggle = document.querySelector('.menu-toggle');
 const navLinks = document.querySelector('.nav-links');
 if (menuToggle && navLinks) {
-  menuToggle.addEventListener('click', () => navLinks.classList.toggle('open'));
+  menuToggle.addEventListener('click', function(e) {
+    e.stopPropagation();
+    navLinks.classList.toggle('open');
+    menuToggle.setAttribute('aria-expanded', navLinks.classList.contains('open'));
+  });
+  // close when tapping a link
+  navLinks.querySelectorAll('a').forEach(a => {
+    a.addEventListener('click', () => navLinks.classList.remove('open'));
+  });
+  // close when tapping outside
+  document.addEventListener('click', function(e) {
+    if (navLinks.classList.contains('open') &&
+        !navLinks.contains(e.target) &&
+        !menuToggle.contains(e.target)) {
+      navLinks.classList.remove('open');
+    }
+  });
 }
 
 // ── Active nav link ──────────────────────────────────────────────────────────

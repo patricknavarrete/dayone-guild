@@ -838,7 +838,7 @@ select.form-control {
 
 /* ── Admin Nav ──────────────────────────────────────────────────────────────── */
 .admin-navbar {
-  background: #0d0d0d;
+  background: linear-gradient(180deg, #16110a 0%, #0d0a06 100%);
   border-bottom: 2px solid var(--gold);
   padding: 0 1.5rem;
   display: flex;
@@ -848,7 +848,8 @@ select.form-control {
   position: sticky;
   top: 0;
   z-index: 100;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.4);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.5), 0 2px 0 rgba(212,175,55,0.3);
+  overflow: hidden;
 }
 .admin-navbar .brand {
   font-family: 'Bebas Neue', sans-serif;
@@ -1043,7 +1044,9 @@ select.form-control {
   .profile-header { flex-direction: column; gap: 1rem; }
   .img-compare { grid-template-columns: 1fr; }
   .parties-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); }
-  .admin-nav-links { display: none; }
+  .admin-nav-links { display: flex; overflow-x: auto; flex-wrap: nowrap; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+  .admin-nav-links::-webkit-scrollbar { display: none; }
+  .admin-nav-links a { white-space: nowrap; flex-shrink: 0; }
   .navbar { top: 0; }
   .news-ticker { position: relative; }
   .dashboard-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }

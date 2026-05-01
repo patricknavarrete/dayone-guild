@@ -3,67 +3,48 @@
 
 {% block content %}
 
-<!-- Welcome card -->
-<div class="home-welcome-card">
-  {% if member and member.photo_path %}
-    <img src="{{ url_for('static', filename=member.photo_path) }}" alt="{{ member.name }}" class="welcome-photo" loading="lazy">
-  {% else %}
-    <div class="welcome-no-photo">⚔</div>
-  {% endif %}
-  <div class="welcome-info">
-    <div class="welcome-name">{{ member.name if member else 'Member' }}</div>
-    <div class="welcome-job">{{ member.job if member else '' }}</div>
-    <div class="welcome-att-rate">
-      <span>Attendance: <strong>{{ att_rate }}%</strong></span>
-      <div class="att-rate-bar"><div class="att-rate-fill" style="width:{{ att_rate }}%;{% if att_rate >= 70 %}background:var(--green);{% elif att_rate >= 40 %}background:#d97706;{% else %}background:var(--red);{% endif %}"></div></div>
-    </div>
-  </div>
-</div>
-
-<!-- Event attendance cards -->
-<div class="home-section-title">⚔ Upcoming Events</div>
-
-<!-- Absent modals (hidden) -->
-<div id="home-absent-modal" class="modal-overlay" style="display:none;" onclick="if(event.target===this)closeHomeAbsent()">
-  <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.5rem;max-width:400px;width:90%;box-shadow:var(--shadow-lg);">
-    <h3 style="font-size:1.1rem;margin-bottom:0.5rem;color:var(--gold);" id="home-absent-title">Mark Absent</h3>
-    <p style="font-size:0.82rem;color:var(--text-muted);margin-bottom:0.75rem;">Leave an optional note for the admin</p>
-    <textarea id="home-absent-note" class="form-control mb-2" rows="3" maxlength="300" placeholder="e.g. Out of town, sick, work…" style="resize:none;"></textarea>
-    <div style="font-size:0.72rem;color:var(--text-muted);margin-bottom:1rem;" id="home-absent-chars">0 / 300</div>
-    <div style="display:flex;gap:0.75rem;flex-wrap:wrap;">
-      <button class="btn btn-red" onclick="confirmHomeAbsent()">✕ Confirm Absent</button>
-      <button class="btn btn-outline" onclick="closeHomeAbsent()">Cancel</button>
-    </div>
-  </div>
-</div>
-<form id="home-absent-form" method="post" action="{{ url_for('mark_attendance') }}" style="display:none;">
-  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-  <input type="hidden" name="event_type" id="home-absent-type">
-  <input type="hidden" name="event_date" id="home-absent-date">
-  <input type="hidden" name="next" value="home">
-  <input type="hidden" name="status" value="absent">
-  <input type="hidden" name="absence_note" id="home-absent-note-hidden">
-</form>
-
-<div class="home-grid">
-
-  <!-- GL Event Card -->
-  {% if events.gl_next %}
-  <div class="home-event-card">
-    <div class="event-type-label">Guild League</div>
-    <div class="event-name">⚔ GL</div>
-    <div class="event-date-str">{{ events.gl_next | fmtdate_noyear }}</div>
-    {% if events.gl_dt_iso %}<div class="home-countdown event-countdown" data-target="{{ events.gl_dt_iso }}"></div>{% endif %}
+<!-- ── Welcome Bar ── -->
+<div class="hd-welcome">
+  <div class="hd-welcome-left">
+    {% if member and member.photo_path %}
+      <img src="{{ url_for('static', filename=member.photo_path) }}" alt="{{ member.name }}" class="hd-avatar" loading="lazy">
+    {% else %}
+      <div class="hd-avatar hd-avatar-placeholder">⚔</div>
+    {% endif %}
     <div>
+      <div class="hd-welcome-name">{{ member.name if member else 'Member' }}</div>
+      <div class="hd-welcome-sub">{{ member.job if member else '' }}</div>
+    </div>
+  </div>
+  <div class="hd-att-pill {% if att_rate >= 70 %}good{% elif att_rate >= 40 %}mid{% else %}low{% endif %}">
+    {{ att_rate }}% Attendance
+  </div>
+</div>
+
+<!-- ── Events ── -->
+<div class="hd-section-label">Upcoming Events</div>
+<div class="hd-events-row">
+
+  <!-- GL Card -->
+  <div class="hd-event-card hd-gl">
+    <img src="{{ url_for('static', filename='images/poring-angry.jpg') }}" class="hd-event-mascot" alt="">
+    <div class="hd-event-top">
+      <span class="hd-event-icon">⚔</span>
+      <div>
+        <div class="hd-event-name">Guild League</div>
+        <div class="hd-event-date">{{ events.gl_next | fmtdate_noyear if events.gl_next else '—' }}</div>
+      </div>
       {% if gl_att %}
-        <span class="home-att-badge {{ gl_att }}">
-          {% if gl_att == 'attending' %}✓{% else %}✕{% endif %} {{ gl_att|title }}
-        </span>
+        <span class="hd-att-chip {{ gl_att }}">{% if gl_att == 'attending' %}✓{% else %}✕{% endif %} {{ gl_att|title }}</span>
       {% else %}
-        <span class="home-att-badge no-response">? No Response</span>
+        <span class="hd-att-chip none">— ?</span>
       {% endif %}
     </div>
-    <div class="home-att-buttons">
+    {% if events.gl_dt_iso %}
+      <div class="hd-countdown event-countdown" data-countdown="{{ events.gl_dt_iso }}"></div>
+    {% endif %}
+    {% if events.gl_next %}
+    <div class="hd-event-btns">
       <form method="post" action="{{ url_for('mark_attendance') }}" class="home-att-form">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <input type="hidden" name="event_type" value="guild_league">
@@ -71,33 +52,31 @@
         <input type="hidden" name="next" value="home">
         <button type="submit" name="status" value="attending" class="btn btn-green btn-sm">✓ Attend</button>
       </form>
-      <button type="button" class="btn btn-red btn-sm" onclick="openHomeAbsent('guild_league','{{ events.gl_next }}','Guild League')">✕ Absent</button>
+      <button type="button" class="btn btn-red btn-sm" onclick="openHAM('guild_league','{{ events.gl_next }}','Guild League')">✕ Absent</button>
     </div>
+    {% endif %}
   </div>
-  {% else %}
-  <div class="home-event-card">
-    <div class="event-type-label">Guild League</div>
-    <div class="event-name" style="color:var(--text-muted);">No Upcoming GL</div>
-  </div>
-  {% endif %}
 
-  <!-- WoE Event Card -->
-  {% if events.woe_next %}
-  <div class="home-event-card">
-    <div class="event-type-label">War of Emperium</div>
-    <div class="event-name">🏰 WoE</div>
-    <div class="event-date-str">{{ events.woe_next | fmtdate_noyear }}</div>
-    {% if events.woe_dt_iso %}<div class="home-countdown event-countdown" data-target="{{ events.woe_dt_iso }}"></div>{% endif %}
-    <div>
+  <!-- WoE Card -->
+  <div class="hd-event-card hd-woe">
+    <img src="{{ url_for('static', filename='images/deviling.jpg') }}" class="hd-event-mascot" alt="">
+    <div class="hd-event-top">
+      <span class="hd-event-icon">🏰</span>
+      <div>
+        <div class="hd-event-name">War of Emperium</div>
+        <div class="hd-event-date">{{ events.woe_next | fmtdate_noyear if events.woe_next else '—' }}</div>
+      </div>
       {% if woe_att %}
-        <span class="home-att-badge {{ woe_att }}">
-          {% if woe_att == 'attending' %}✓{% else %}✕{% endif %} {{ woe_att|title }}
-        </span>
+        <span class="hd-att-chip {{ woe_att }}">{% if woe_att == 'attending' %}✓{% else %}✕{% endif %} {{ woe_att|title }}</span>
       {% else %}
-        <span class="home-att-badge no-response">? No Response</span>
+        <span class="hd-att-chip none">— ?</span>
       {% endif %}
     </div>
-    <div class="home-att-buttons">
+    {% if events.woe_dt_iso %}
+      <div class="hd-countdown event-countdown" data-countdown="{{ events.woe_dt_iso }}"></div>
+    {% endif %}
+    {% if events.woe_next %}
+    <div class="hd-event-btns">
       <form method="post" action="{{ url_for('mark_attendance') }}" class="home-att-form">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <input type="hidden" name="event_type" value="woe">
@@ -105,146 +84,175 @@
         <input type="hidden" name="next" value="home">
         <button type="submit" name="status" value="attending" class="btn btn-green btn-sm">✓ Attend</button>
       </form>
-      <button type="button" class="btn btn-red btn-sm" onclick="openHomeAbsent('woe','{{ events.woe_next }}','War of Emperium')">✕ Absent</button>
+      <button type="button" class="btn btn-red btn-sm" onclick="openHAM('woe','{{ events.woe_next }}','War of Emperium')">✕ Absent</button>
+    </div>
+    {% endif %}
+  </div>
+
+</div>
+
+<!-- ── Party Assignments ── -->
+<div class="hd-section-label">My Party Assignments</div>
+<div class="hd-party-row">
+
+  <div class="hd-party-card">
+    <div class="hd-party-header">
+      <span class="hd-party-icon">⚔</span>
+      <span class="hd-party-title">Guild League</span>
+      {% if gl_party %}<span class="hd-party-name">{{ gl_party.name }}{% if gl_party.is_sub %} <small>(Sub)</small>{% endif %}</span>{% endif %}
+    </div>
+    {% if gl_party %}
+      <ul class="hd-roster">
+        {% for m in gl_party_members %}
+        <li class="hd-roster-row{% if m.name == (member.name if member else '') %} me{% endif %}">
+          <span class="hd-roster-dot"></span>
+          <span class="hd-roster-name">{{ m.name }}</span>
+          <span class="hd-roster-job">{{ m.job }}</span>
+          {% if m.name == (member.name if member else '') %}<span class="hd-me-tag">you</span>{% endif %}
+        </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <div class="hd-empty-mascot">
+        <img src="{{ url_for('static', filename='images/poring-sleep.jpg') }}" alt="">
+        <p>Not assigned to a party yet.</p>
+      </div>
+    {% endif %}
+    <a href="{{ url_for('guild_league') }}" class="hd-party-link">View GL Parties →</a>
+  </div>
+
+  <div class="hd-party-card">
+    <div class="hd-party-header">
+      <span class="hd-party-icon">🏰</span>
+      <span class="hd-party-title">War of Emperium</span>
+      {% if woe_party %}<span class="hd-party-name">{{ woe_party.name }}</span>{% endif %}
+    </div>
+    {% if woe_party %}
+      {% if woe_party.target_castle %}<div class="hd-castle">🏯 {{ woe_party.target_castle }}</div>{% endif %}
+      <ul class="hd-roster">
+        {% for m in woe_party_members %}
+        <li class="hd-roster-row{% if m.name == (member.name if member else '') %} me{% endif %}">
+          <span class="hd-roster-dot"></span>
+          <span class="hd-roster-name">{{ m.name }}</span>
+          <span class="hd-roster-job">{{ m.job }}</span>
+          {% if m.name == (member.name if member else '') %}<span class="hd-me-tag">you</span>{% endif %}
+        </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <div class="hd-empty-mascot">
+        <img src="{{ url_for('static', filename='images/poring-sleepy.jpg') }}" alt="">
+        <p>Not assigned to a party yet.</p>
+      </div>
+    {% endif %}
+    <a href="{{ url_for('woe') }}" class="hd-party-link">View WoE Parties →</a>
+  </div>
+
+</div>
+
+<!-- ── Guild News ── -->
+{% if announcements %}
+<div class="hd-section-label">
+  Guild News
+  <a href="{{ url_for('announcements') }}" class="hd-news-all">View all →</a>
+</div>
+<div class="hd-news-list">
+  {% for ann in announcements %}
+  <div class="hd-news-card{% if ann.is_pinned %} pinned{% endif %}">
+    <div class="hd-news-left">
+      {% if ann.is_pinned %}<span class="hd-pin">📌</span>{% endif %}
+    </div>
+    <div class="hd-news-body">
+      <div class="hd-news-title">{{ ann.title }}</div>
+      {% if ann.body %}<div class="hd-news-text">{{ ann.body }}</div>{% endif %}
+      <div class="hd-news-date">{{ ann.created_at[:10] }}</div>
     </div>
   </div>
-  {% else %}
-  <div class="home-event-card">
-    <div class="event-type-label">War of Emperium</div>
-    <div class="event-name" style="color:var(--text-muted);">No Upcoming WoE</div>
-  </div>
-  {% endif %}
-
-</div>
-
-<!-- Party Assignments -->
-<div class="home-section-title">🎯 My Party Assignments</div>
-<div class="home-grid">
-
-  <!-- GL Party -->
-  <div class="home-party-card">
-    <div class="party-label">⚔ Guild League Party</div>
-    {% if gl_party %}
-      <div class="party-name-display">{{ gl_party.name }}{% if gl_party.is_sub %} <span style="font-size:0.65rem;color:var(--text-muted);font-family:inherit;">(Sub)</span>{% endif %}</div>
-      <ul class="home-party-members">
-        {% for m in gl_party_members %}
-        <li{% if m.name == (member.name if member else '') %} class="is-me"{% endif %}>
-          <span>{{ m.name }}</span>
-          <span class="hpm-job">{{ m.job }}</span>
-          {% if m.name == (member.name if member else '') %}<span style="font-size:0.65rem;color:var(--gold);">← you</span>{% endif %}
-        </li>
-        {% endfor %}
-      </ul>
-    {% else %}
-      <div style="font-size:0.82rem;color:var(--text-muted);padding:0.5rem 0;">Not assigned to a party yet.</div>
-    {% endif %}
-  </div>
-
-  <!-- WoE Party -->
-  <div class="home-party-card">
-    <div class="party-label">🏰 War of Emperium Party</div>
-    {% if woe_party %}
-      <div class="party-name-display">{{ woe_party.name }}</div>
-      {% if woe_party.target_castle %}<div style="font-size:0.72rem;color:var(--gold);">🏯 {{ woe_party.target_castle }}</div>{% endif %}
-      <ul class="home-party-members">
-        {% for m in woe_party_members %}
-        <li{% if m.name == (member.name if member else '') %} class="is-me"{% endif %}>
-          <span>{{ m.name }}</span>
-          <span class="hpm-job">{{ m.job }}</span>
-          {% if m.name == (member.name if member else '') %}<span style="font-size:0.65rem;color:var(--gold);">← you</span>{% endif %}
-        </li>
-        {% endfor %}
-      </ul>
-    {% else %}
-      <div style="font-size:0.82rem;color:var(--text-muted);padding:0.5rem 0;">Not assigned to a party yet.</div>
-    {% endif %}
-  </div>
-
-</div>
-
-<!-- Announcements & Guild News -->
-{% if announcements %}
-<div class="home-section-title">📢 Guild News</div>
-{% for ann in announcements %}
-<div class="home-ann-card{% if ann.is_pinned %} pinned{% endif %}">
-  {% if ann.is_pinned %}<div class="ann-tag">📌 Pinned</div>{% endif %}
-  <div class="ann-title">{{ ann.title }}</div>
-  {% if ann.body %}<div class="ann-body">{{ ann.body }}</div>{% endif %}
-  <div class="ann-date">{{ ann.created_at[:10] }}</div>
-</div>
-{% endfor %}
-<div style="text-align:center;margin-top:0.5rem;">
-  <a href="{{ url_for('announcements') }}" class="btn btn-outline btn-sm">View All News →</a>
+  {% endfor %}
 </div>
 {% endif %}
+
+<!-- Absent modal -->
+<div id="ham-modal" class="modal-overlay" style="display:none;" onclick="if(event.target===this)closeHAM()">
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.5rem;max-width:400px;width:90%;box-shadow:var(--shadow-lg);">
+    <h3 style="font-size:1.1rem;margin-bottom:0.5rem;color:var(--gold);" id="ham-title">Mark Absent</h3>
+    <p style="font-size:0.82rem;color:var(--text-muted);margin-bottom:0.75rem;">Leave an optional note for the admin</p>
+    <textarea id="ham-note" class="form-control mb-2" rows="3" maxlength="300" placeholder="e.g. Out of town, sick, work…" style="resize:none;"></textarea>
+    <div style="font-size:0.72rem;color:var(--text-muted);margin-bottom:1rem;" id="ham-chars">0 / 300</div>
+    <div style="display:flex;gap:0.75rem;flex-wrap:wrap;">
+      <button class="btn btn-red" onclick="confirmHAM()">✕ Confirm Absent</button>
+      <button class="btn btn-outline" onclick="closeHAM()">Cancel</button>
+    </div>
+  </div>
+</div>
+<form id="ham-form" method="post" action="{{ url_for('mark_attendance') }}" style="display:none;">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <input type="hidden" name="event_type" id="ham-type">
+  <input type="hidden" name="event_date" id="ham-date">
+  <input type="hidden" name="next" value="home">
+  <input type="hidden" name="status" value="absent">
+  <input type="hidden" name="absence_note" id="ham-note-hidden">
+</form>
 
 {% endblock %}
 
 {% block scripts %}
 <script>
-// Absent modal for home page
-let _homeAbsentType = '', _homeAbsentDate = '';
-function openHomeAbsent(type, date, label) {
-  _homeAbsentType = type; _homeAbsentDate = date;
-  document.getElementById('home-absent-title').textContent = 'Mark Absent — ' + label;
-  document.getElementById('home-absent-note').value = '';
-  document.getElementById('home-absent-chars').textContent = '0 / 300';
-  document.getElementById('home-absent-modal').style.display = 'flex';
-  setTimeout(() => document.getElementById('home-absent-note').focus(), 50);
+var _hamType='', _hamDate='';
+function openHAM(t,d,label){
+  _hamType=t; _hamDate=d;
+  document.getElementById('ham-title').textContent='Mark Absent — '+label;
+  document.getElementById('ham-note').value='';
+  document.getElementById('ham-chars').textContent='0 / 300';
+  document.getElementById('ham-modal').style.display='flex';
+  setTimeout(()=>document.getElementById('ham-note').focus(),50);
 }
-function closeHomeAbsent() { document.getElementById('home-absent-modal').style.display = 'none'; }
-function confirmHomeAbsent() {
-  document.getElementById('home-absent-type').value = _homeAbsentType;
-  document.getElementById('home-absent-date').value = _homeAbsentDate;
-  document.getElementById('home-absent-note-hidden').value = document.getElementById('home-absent-note').value;
-  document.getElementById('home-absent-form').submit();
+function closeHAM(){ document.getElementById('ham-modal').style.display='none'; }
+function confirmHAM(){
+  document.getElementById('ham-type').value=_hamType;
+  document.getElementById('ham-date').value=_hamDate;
+  document.getElementById('ham-note-hidden').value=document.getElementById('ham-note').value;
+  document.getElementById('ham-form').submit();
 }
-document.getElementById('home-absent-note')?.addEventListener('input', function() {
-  document.getElementById('home-absent-chars').textContent = this.value.length + ' / 300';
+document.getElementById('ham-note')?.addEventListener('input',function(){
+  document.getElementById('ham-chars').textContent=this.value.length+' / 300';
 });
 
-// Countdown for home cards
-(function() {
-  function updateHomeCountdowns() {
-    document.querySelectorAll('.home-countdown[data-target]').forEach(el => {
-      const target = new Date(el.dataset.target);
-      const diff = target - new Date();
-      if (diff <= 0) { el.textContent = '⚡ Starting now!'; return; }
-      const d = Math.floor(diff / 86400000);
-      const h = Math.floor((diff % 86400000) / 3600000);
-      const m = Math.floor((diff % 3600000) / 60000);
-      const s = Math.floor((diff % 60000) / 1000);
-      const parts = [];
-      if (d > 0) parts.push(d + 'd');
-      parts.push(String(h).padStart(2,'0') + 'h ' + String(m).padStart(2,'0') + 'm ' + String(s).padStart(2,'0') + 's');
-      el.textContent = '⏱ ' + parts.join(' ');
+// Countdown timers on home cards (reuse .event-countdown selector from main.js)
+// main.js already handles .event-banner[data-countdown] — home uses .event-countdown[data-countdown]
+(function(){
+  function tick(){
+    document.querySelectorAll('.hd-countdown[data-countdown]').forEach(function(el){
+      var diff = new Date(el.dataset.countdown) - new Date();
+      if(diff<=0){ el.textContent='⚡ Starting now!'; return; }
+      var d=Math.floor(diff/86400000),
+          h=Math.floor((diff%86400000)/3600000),
+          m=Math.floor((diff%3600000)/60000),
+          s=Math.floor((diff%60000)/1000);
+      el.textContent='⏱ '+(d?d+'d ':'')+String(h).padStart(2,'0')+'h '+String(m).padStart(2,'0')+'m '+String(s).padStart(2,'0')+'s';
     });
   }
-  if (document.querySelector('.home-countdown[data-target]')) {
-    updateHomeCountdowns();
-    setInterval(updateHomeCountdowns, 1000);
-  }
+  if(document.querySelector('.hd-countdown[data-countdown]')){ tick(); setInterval(tick,1000); }
 })();
 
-// Optimistic attendance for home page
-document.querySelectorAll('.home-att-form').forEach(form => {
-  form.addEventListener('submit', async function(e) {
+// Optimistic attendance
+document.querySelectorAll('.home-att-form').forEach(function(form){
+  form.addEventListener('submit', async function(e){
     e.preventDefault();
-    const status = e.submitter ? e.submitter.value : form.querySelector('[name=status]').value;
-    const fd     = new FormData(form);
-    const card   = form.closest('.home-event-card');
-    const badge  = card?.querySelector('.home-att-badge');
-    const btns   = form.querySelectorAll('button');
-    btns.forEach(b => b.classList.add('btn-att-loading'));
-    if (badge) {
-      badge.className = 'home-att-badge ' + status;
-      badge.textContent = (status === 'attending' ? '✓ Attending' : '✕ Absent');
+    var status = e.submitter ? e.submitter.value : form.querySelector('[name=status]').value;
+    var fd = new FormData(form);
+    var chip = form.closest('.hd-event-card')?.querySelector('.hd-att-chip');
+    var btns = form.querySelectorAll('button');
+    btns.forEach(b=>b.classList.add('btn-att-loading'));
+    if(chip){
+      chip.className = 'hd-att-chip '+status;
+      chip.textContent = (status==='attending'?'✓ Attending':'✕ Absent');
     }
-    try {
-      const resp = await fetch(form.action, { method: 'POST', headers: { 'X-Fetch': '1' }, body: fd });
-      if (!resp.ok) throw new Error();
-    } catch { form.submit(); }
-    finally { btns.forEach(b => b.classList.remove('btn-att-loading')); }
+    try{
+      var r = await fetch(form.action,{method:'POST',headers:{'X-Fetch':'1'},body:fd});
+      if(!r.ok) throw new Error();
+    } catch(err){ form.submit(); }
+    finally{ btns.forEach(b=>b.classList.remove('btn-att-loading')); }
   });
 });
 </script>

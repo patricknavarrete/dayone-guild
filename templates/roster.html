@@ -103,6 +103,7 @@
   </div>
 {% else %}
   <div class="empty-state">
+    <img src="{{ url_for('static', filename='images/ghostring.jpg') }}" alt="" style="width:80px;height:80px;object-fit:contain;opacity:0.6;filter:drop-shadow(0 4px 12px rgba(0,0,0,0.4));margin-bottom:0.75rem;">
     <p>No approved members yet. Be the first to join!</p>
     <a href="{{ url_for('register') }}" class="btn btn-primary mt-2">Register</a>
   </div>

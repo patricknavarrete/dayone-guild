@@ -1206,3 +1206,300 @@ select.form-control {
   .officers-hero { height: 160px; }
   .officers-card-grid { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); }
 }
+
+/* ══════════════════════════════════════════════════════════════
+   PARTY MANAGEMENT — Admin (GL + WoE)
+   ══════════════════════════════════════════════════════════════ */
+
+/* Action bar */
+.party-action-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-bottom: 1.25rem;
+  align-items: center;
+}
+.create-party-form {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.inline-check-label {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+/* Pool */
+.pool-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.6rem;
+}
+.pool-count { font-size: 0.82rem; color: var(--text-muted); font-weight: 400; }
+.pool-toggle-btn {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  padding: 0.2rem 0.5rem;
+  cursor: pointer;
+  line-height: 1;
+}
+.pool-toggle-btn:hover { border-color: var(--gold); color: var(--gold); }
+.pool-search-input {
+  width: 100%;
+  padding: 0.45rem 0.65rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface2);
+  color: var(--text);
+  font-size: 0.82rem;
+  margin-bottom: 0.5rem;
+  box-sizing: border-box;
+}
+.pool-search-input:focus { outline: none; border-color: var(--gold); }
+.pool-search-input::placeholder { color: var(--text-muted); }
+.pool-empty {
+  text-align: center;
+  padding: 1rem;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+/* Chip body layout */
+.chip-body {
+  flex: 1;
+  min-width: 0;
+}
+.chip-meta {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+  margin-top: 0.05rem;
+}
+
+/* Chip action buttons */
+.chip-btn {
+  background: none;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  cursor: pointer;
+  font-size: 0.78rem;
+  line-height: 1;
+  padding: 0.2rem 0.35rem;
+  flex-shrink: 0;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+.chip-assign-btn { color: var(--gold); }
+.chip-assign-btn:hover { background: rgba(168,116,24,0.12); border-color: var(--gold); }
+.chip-remove-btn { color: var(--text-muted); }
+.chip-remove-btn:hover { background: rgba(201,31,31,0.1); border-color: var(--red); color: var(--red); }
+
+/* CSS-driven button visibility per container */
+.pool-list .chip-remove-btn  { display: none; }
+.party-list .chip-assign-btn { display: none; }
+
+/* Party card internals */
+.party-count-badge {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.card-notes-row {
+  padding: 0.5rem 0.6rem;
+  border-top: 1px solid var(--border);
+}
+.notes-inline-form {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+}
+.notes-inline-form .form-control-sm { flex: 1; min-width: 0; }
+
+/* btn-xs */
+.btn-xs {
+  padding: 0.15rem 0.45rem;
+  font-size: 0.7rem;
+}
+
+/* Sub party card */
+.admin-party-sub { border-color: #3a3a3a; }
+.party-header--sub { background: linear-gradient(90deg,#111,#161616); }
+
+/* Parties column on right side */
+.parties-col { min-width: 0; }
+.parties-section-label {
+  font-size: 1.15rem;
+  color: var(--gold);
+  font-weight: 700;
+  margin-bottom: 0.75rem;
+  font-family: 'Bebas Neue', sans-serif;
+  letter-spacing: 0.08em;
+}
+
+/* Legend */
+.party-legend {
+  margin-top: 1rem;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+/* ── Quick-assign modal ── */
+.qassign-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  z-index: 999;
+  align-items: flex-end;
+  justify-content: center;
+}
+@media (min-width: 481px) {
+  .qassign-overlay { align-items: center; }
+}
+.qassign-box {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  padding: 1.25rem 1rem 1.5rem;
+  width: 100%;
+  max-width: 420px;
+  box-shadow: var(--shadow-lg);
+  max-height: 85vh;
+  overflow-y: auto;
+}
+@media (min-width: 481px) {
+  .qassign-box { border-radius: var(--radius-lg); max-height: 70vh; }
+}
+.qassign-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.85rem;
+  font-size: 0.95rem;
+  color: var(--text);
+}
+.qassign-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-bottom: 0.75rem;
+}
+.qassign-section-lbl {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: var(--text-muted);
+  margin: 0.5rem 0 0.2rem;
+  padding-left: 0.25rem;
+}
+.qassign-party-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 0.65rem 0.85rem;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+  min-height: 44px;
+}
+.qassign-party-btn:hover { border-color: var(--gold); background: rgba(168,116,24,0.07); }
+.qassign-party-btn--sub { opacity: 0.8; font-weight: 400; }
+.qassign-cnt {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-weight: 400;
+  margin-left: 0.5rem;
+  white-space: nowrap;
+}
+.qassign-unassign-btn { width: 100%; margin-top: 0.25rem; }
+
+/* ══════════════════════════════════════════════════════════════
+   PARTY CARDS — Member-facing (GL + WoE)
+   ══════════════════════════════════════════════════════════════ */
+
+.parties-section-heading {
+  font-size: 1.25rem;
+  color: var(--gold);
+  margin-bottom: 0.75rem;
+  font-family: 'Bebas Neue', sans-serif;
+  letter-spacing: 0.07em;
+}
+.party-slot-badge {
+  font-size: 0.72rem;
+  color: rgba(255,255,255,0.45);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.party-castle-tag {
+  font-size: 0.7rem;
+  color: var(--gold);
+  font-weight: 700;
+  margin-top: 0.1rem;
+  letter-spacing: 0.04em;
+}
+.party-member-empty {
+  padding: 0.6rem 0.75rem;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  font-style: italic;
+}
+.party-sub-notice {
+  padding: 0.4rem 0.75rem;
+  background: #fffbeb;
+  border-top: 1px solid #fde68a;
+  font-size: 0.75rem;
+  color: #92400e;
+  font-weight: 600;
+}
+
+/* ── Responsive overrides for party pages ── */
+
+/* Taller touch targets on mobile member rows */
+@media (max-width: 768px) {
+  .party-member-row {
+    min-height: 44px;
+    padding: 0.55rem 0.75rem;
+  }
+  .party-member-row .member-name { font-size: 0.92rem; }
+  .party-member-row .member-job  { font-size: 0.75rem; }
+
+  /* Action bar stacks cleanly */
+  .party-action-bar { gap: 0.5rem; }
+  .create-party-form { flex: 1 1 100%; }
+
+  /* Admin pool not sticky on mobile — just stacks */
+  .unassigned-pool { position: static; max-height: none; }
+
+  /* Chips bigger tap area on mobile */
+  .member-chip { padding: 0.55rem 0.65rem; min-height: 44px; }
+  .drag-handle  { font-size: 1.1rem; padding: 0.25rem 0.1rem; }
+  .chip-btn     { padding: 0.3rem 0.45rem; font-size: 0.85rem; min-width: 32px; min-height: 32px; }
+}
+
+/* Single-column parties on small phones */
+@media (max-width: 480px) {
+  .parties-grid { grid-template-columns: 1fr; }
+  .admin-parties-grid { grid-template-columns: 1fr; }
+  .party-card { border-radius: var(--radius); }
+  .party-member-row { min-height: 48px; }
+  .party-member-row .member-name { font-size: 0.95rem; }
+}

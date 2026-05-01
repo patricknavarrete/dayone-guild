@@ -741,6 +741,9 @@ def profile():
 
             if old_pw and new_pw:
                 member = db.execute("SELECT password_hash FROM members WHERE id=?", (mid,)).fetchone()
+                if not member:
+                    flash('Member not found.', 'error')
+                    return redirect(url_for('profile'))
                 if not check_password_hash(member['password_hash'], old_pw):
                     flash('Current password is incorrect.', 'error')
                     return redirect(url_for('profile'))
@@ -773,6 +776,9 @@ def profile():
                 flash('You already have a pending power update.', 'warning')
                 return redirect(url_for('profile'))
             member = db.execute("SELECT power, power_screenshot_path FROM members WHERE id=?", (mid,)).fetchone()
+            if not member:
+                flash('Member not found.', 'error')
+                return redirect(url_for('profile'))
             db.execute(
                 """INSERT INTO pending_updates
                    (member_id, field_name, old_value, new_value, old_screenshot, new_screenshot)
@@ -795,6 +801,9 @@ def profile():
                 flash('You already have a pending equipment update.', 'warning')
                 return redirect(url_for('profile'))
             member = db.execute("SELECT equipment_screenshot_path FROM members WHERE id=?", (mid,)).fetchone()
+            if not member:
+                flash('Member not found.', 'error')
+                return redirect(url_for('profile'))
             db.execute(
                 """INSERT INTO pending_updates
                    (member_id, field_name, old_value, new_value, old_screenshot, new_screenshot)
@@ -816,6 +825,9 @@ def profile():
                 flash('You already have a pending Quasi Stats update.', 'warning')
                 return redirect(url_for('profile'))
             member = db.execute("SELECT quasi_stats_screenshot_path FROM members WHERE id=?", (mid,)).fetchone()
+            if not member:
+                flash('Member not found.', 'error')
+                return redirect(url_for('profile'))
             db.execute(
                 """INSERT INTO pending_updates
                    (member_id, field_name, old_value, new_value, old_screenshot, new_screenshot)
@@ -837,6 +849,9 @@ def profile():
                 flash('You already have a pending job update.', 'warning')
                 return redirect(url_for('profile'))
             member = db.execute("SELECT job FROM members WHERE id=?", (mid,)).fetchone()
+            if not member:
+                flash('Member not found.', 'error')
+                return redirect(url_for('profile'))
             db.execute(
                 "INSERT INTO pending_updates (member_id, field_name, old_value, new_value) VALUES (?,?,?,?)",
                 (mid, 'job', member['job'], new_job)

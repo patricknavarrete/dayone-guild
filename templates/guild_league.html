@@ -9,7 +9,7 @@
   <div class="event-info">
     <div class="event-label">Next Guild League</div>
     <div class="event-date">{{ next_gl | fmtdate }}</div>
-    {% if next_gl_iso %}<div class="event-countdown" style="font-size:0.78rem;color:#d4af37;margin-top:0.2rem;"></div>{% endif %}
+    {% if next_gl_iso %}<div class="event-countdown"></div>{% endif %}
   </div>
   <div class="att-actions">
     {% if gl_att %}
@@ -33,14 +33,14 @@
 {% set sub_parties  = parties | selectattr('is_sub', 'equalto', 1) | list %}
 
 {% if main_parties %}
-  <h2 style="font-size:1.3rem;margin-bottom:0.75rem;color:var(--gold);">Main Parties</h2>
+  <h2 class="parties-section-heading">Main Parties</h2>
   <div class="parties-grid mb-3">
     {% for party in main_parties %}
-    {% set any_absent = party.members | selectattr('attendance', 'equalto', 'absent') | list | length > 0 %}
+    {% set absent_count = party.members | selectattr('attendance', 'equalto', 'absent') | list | length %}
     <div class="party-card">
       <div class="party-header">
         <h3>{{ party.name }}</h3>
-        <span style="font-size:0.72rem;color:rgba(255,255,255,0.5);">{{ party.members|length }}/5</span>
+        <span class="party-slot-badge">{{ party.members|length }}/5</span>
       </div>
       <ul class="party-member-list">
         {% for m in party.members %}
@@ -50,13 +50,11 @@
           <div class="member-job">{{ m.job }}</div>
         </li>
         {% else %}
-        <li style="padding:0.5rem 0.75rem;color:var(--text-muted);font-size:0.8rem;">Empty</li>
+        <li class="party-member-empty">Empty party</li>
         {% endfor %}
       </ul>
-      {% if any_absent and sub_parties %}
-      <div style="padding:0.4rem 0.75rem;background:#fffbeb;border-top:1px solid #fde68a;font-size:0.75rem;color:#92400e;font-weight:600;">
-        ⚠ Sub needed — check sub parties below
-      </div>
+      {% if absent_count > 0 and sub_parties %}
+      <div class="party-sub-notice">⚠ {{ absent_count }} absent — check sub parties below</div>
       {% endif %}
       {% if party.notes %}
       <div class="party-notes">📝 {{ party.notes }}</div>
@@ -83,7 +81,7 @@
           <div class="member-job">{{ m.job }}</div>
         </li>
         {% else %}
-        <li style="padding:0.5rem 0.75rem;color:var(--text-muted);font-size:0.8rem;">Empty</li>
+        <li class="party-member-empty">Empty party</li>
         {% endfor %}
       </ul>
       {% if party.notes %}
@@ -101,27 +99,26 @@
   </div>
 {% endif %}
 
-<div style="margin-top:1rem;font-size:0.78rem;color:var(--text-muted);">
+<div class="party-legend">
   <span class="att-badge attending" style="display:inline-block;vertical-align:middle;margin-right:4px;"></span> Attending &nbsp;
   <span class="att-badge absent" style="display:inline-block;vertical-align:middle;margin-right:4px;"></span> Absent &nbsp;
   <span class="att-badge no-response" style="display:inline-block;vertical-align:middle;margin-right:4px;"></span> No Response &nbsp;&nbsp;
   <span style="border-left:3px solid var(--gold);padding-left:6px;">Gold border = Support class</span>
 </div>
 
-<!-- Absent note modal -->
-<div id="absent-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:998;align-items:center;justify-content:center;" onclick="if(event.target===this)closeAbsentModal()">
+<!-- Absent modal -->
+<div id="absent-modal" class="modal-overlay" style="display:none;" onclick="if(event.target===this)closeAbsentModal()">
   <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.5rem;max-width:400px;width:90%;box-shadow:var(--shadow-lg);">
     <h3 style="font-size:1.2rem;margin-bottom:0.5rem;color:var(--gold);">Mark Absent — Guild League</h3>
-    <p style="font-size:0.85rem;color:var(--text-muted);margin-bottom:1rem;">Leave an optional note for the admin (reason, etc.)</p>
-    <textarea id="absent-note-input" class="form-control mb-2" rows="3" maxlength="300" placeholder="e.g. Out of town, sick, work..." style="resize:none;"></textarea>
+    <p style="font-size:0.85rem;color:var(--text-muted);margin-bottom:1rem;">Leave an optional note for the admin</p>
+    <textarea id="absent-note-input" class="form-control mb-2" rows="3" maxlength="300" placeholder="e.g. Out of town, sick, work…" style="resize:none;"></textarea>
     <div style="font-size:0.72rem;color:var(--text-muted);margin-bottom:1rem;" id="absent-char-count">0 / 300</div>
-    <div style="display:flex;gap:0.75rem;">
+    <div style="display:flex;gap:0.75rem;flex-wrap:wrap;">
       <button class="btn btn-red" onclick="confirmAbsent()">✕ Confirm Absent</button>
       <button class="btn btn-outline" onclick="closeAbsentModal()">Cancel</button>
     </div>
   </div>
 </div>
-
 <form id="gl-absent-form" method="post" action="{{ url_for('mark_attendance') }}" style="display:none;">
   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   <input type="hidden" name="event_type" value="guild_league">
@@ -140,9 +137,7 @@ function openAbsentModal() {
   document.getElementById('absent-modal').style.display = 'flex';
   setTimeout(() => document.getElementById('absent-note-input').focus(), 50);
 }
-function closeAbsentModal() {
-  document.getElementById('absent-modal').style.display = 'none';
-}
+function closeAbsentModal() { document.getElementById('absent-modal').style.display = 'none'; }
 function confirmAbsent() {
   document.getElementById('gl-absent-note').value = document.getElementById('absent-note-input').value;
   document.getElementById('gl-absent-form').submit();

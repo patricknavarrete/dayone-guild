@@ -13,177 +13,300 @@
   {% endif %}
 </div>
 
-<!-- Action bar -->
-<div style="display:flex;flex-wrap:wrap;gap:0.75rem;margin-bottom:1.5rem;align-items:center;">
-  <form method="post" action="{{ url_for('admin_woe_auto') }}" onsubmit="return confirm('This will clear existing WoE parties and randomly distribute all members. Continue?')">
+<div class="party-action-bar">
+  <form method="post" action="{{ url_for('admin_woe_auto') }}" onsubmit="return confirm('Clear existing WoE parties and randomly distribute? Continue?')">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <button type="submit" class="btn btn-gold">🎲 Auto-Distribute (Random)</button>
+    <button type="submit" class="btn btn-gold btn-sm">🎲 Auto-Distribute</button>
   </form>
-  <form method="post" action="{{ url_for('admin_woe_reset') }}" onsubmit="return confirm('This will clear ALL WoE parties. Continue?')">
+  <form method="post" action="{{ url_for('admin_woe_reset') }}" onsubmit="return confirm('Clear ALL WoE parties?')">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <button type="submit" class="btn btn-outline">🗑 Reset All</button>
+    <button type="submit" class="btn btn-outline btn-sm">🗑 Reset All</button>
   </form>
-
-  <!-- Create party -->
-  <form method="post" action="{{ url_for('admin_woe_create_party') }}" style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;">
+  <form method="post" action="{{ url_for('admin_woe_create_party') }}" class="create-party-form">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <input type="text" name="name" class="form-control" placeholder="New party name" style="width:180px;" required>
+    <input type="text" name="name" class="form-control form-control-sm" placeholder="New party name" required>
     <button type="submit" class="btn btn-outline btn-sm">+ Create</button>
   </form>
 </div>
 
 <div class="party-mgmt-layout">
-  <!-- Unassigned pool -->
+
+  <!-- ── Unassigned Pool ── -->
   <div class="unassigned-pool">
-    <h3>Unassigned <span style="font-size:0.8rem;color:var(--text-muted);">({{ unassigned|length }})</span></h3>
-    <div class="sortable-list" id="woe-pool-unassigned" data-party-id="">
-      {% for m in unassigned %}
-      <div class="member-chip {% if m.is_support %}support-chip{% endif %}" data-member-id="{{ m.id }}">
-        <span class="drag-handle">⣿</span>
-        <div style="flex:1;min-width:0;">
-          <div class="chip-name">{{ m.name }}</div>
-          <div style="display:flex;gap:0.5rem;">
-            <span class="chip-job">{{ m.job }}</span>
-            <span class="chip-power">{{ "{:,}".format(m.power) }}</span>
+    <div class="pool-header">
+      <h3>Unassigned <span class="pool-count" id="pool-count">({{ unassigned|length }})</span></h3>
+      <button class="pool-toggle-btn" id="pool-toggle" onclick="togglePool()">▲</button>
+    </div>
+    <div id="pool-body">
+      <input type="text" id="pool-search" class="pool-search-input" placeholder="Search name or job…" autocomplete="off">
+      <div class="sortable-list pool-list" id="pool-unassigned" data-party-id="">
+        {% for m in unassigned %}
+        <div class="member-chip {% if m.is_support %}support-chip{% endif %}" data-member-id="{{ m.id }}">
+          <span class="drag-handle" title="Drag to assign">⣿</span>
+          <div class="chip-body">
+            <div class="chip-name">{{ m.name }}</div>
+            <div class="chip-meta">
+              <span class="chip-job">{{ m.job }}</span>
+              <span class="chip-power">{{ "{:,}".format(m.power) }}</span>
+            </div>
           </div>
+          <div class="att-badge {% if m.attendance == 'attending' %}attending{% elif m.attendance == 'absent' %}absent{% else %}no-response{% endif %}"></div>
+          <button class="chip-btn chip-assign-btn" onclick="openAssignModal({{ m.id }}, {{ m.name | tojson }})" title="Quick assign to party">＋</button>
+          <button class="chip-btn chip-remove-btn" onclick="removeChip({{ m.id }}, this)" title="Return to unassigned">↩</button>
         </div>
-        <div class="att-badge {% if m.attendance == 'attending' %}attending{% elif m.attendance == 'absent' %}absent{% else %}no-response{% endif %}"></div>
+        {% else %}
+        <div class="pool-empty">All members assigned</div>
+        {% endfor %}
       </div>
-      {% else %}
-      <div style="text-align:center;padding:1rem;color:var(--text-muted);font-size:0.8rem;">All members assigned</div>
-      {% endfor %}
     </div>
   </div>
 
-  <!-- Party cards -->
-  <div>
+  <!-- ── Party Cards ── -->
+  <div class="parties-col">
     {% if parties %}
-      <div class="admin-parties-grid">
-        {% for party in parties %}
-        <div class="admin-party-card">
-          <div class="party-header">
-            <h3>{{ party.name }}</h3>
-            <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">
-              <span style="font-size:0.72rem;color:var(--text-muted);">{{ party.members|length }}/5</span>
-              <form method="post" action="{{ url_for('admin_woe_delete_party', party_id=party.id) }}"
-                    onsubmit="return confirm('Delete {{ party.name | e }}?')" style="margin:0;">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <button type="submit" class="btn btn-red btn-sm" style="padding:0.15rem 0.4rem;font-size:0.7rem;">✕</button>
-              </form>
-            </div>
+    <div class="admin-parties-grid">
+      {% for party in parties %}
+      <div class="admin-party-card">
+        <div class="party-header">
+          <div style="min-width:0;">
+            <h3 style="margin-bottom:0.1rem;">{{ party.name }}</h3>
+            {% if party.target_castle %}
+            <div style="font-size:0.68rem;color:var(--gold);font-weight:700;letter-spacing:0.04em;">🏯 {{ party.target_castle }}</div>
+            {% endif %}
           </div>
-
-          <div class="sortable-list" data-party-id="{{ party.id }}">
-            {% for m in party.members %}
-            <div class="member-chip {% if m.is_support %}support-chip{% endif %}" data-member-id="{{ m.id }}">
-              <span class="drag-handle">⣿</span>
-              <div style="flex:1;min-width:0;">
-                <div class="chip-name">{{ m.name }}</div>
-                <div style="display:flex;gap:0.5rem;">
-                  <span class="chip-job">{{ m.job }}</span>
-                  <span class="chip-power">{{ "{:,}".format(m.power) }}</span>
-                </div>
-              </div>
-              <div class="att-badge {% if m.attendance == 'attending' %}attending{% elif m.attendance == 'absent' %}absent{% else %}no-response{% endif %}"></div>
-            </div>
-            {% else %}
-            <div class="empty-drop" style="padding:0.75rem;text-align:center;color:var(--text-muted);font-size:0.78rem;border:1px dashed var(--border);border-radius:var(--radius);margin:0.25rem;">Drop members here</div>
-            {% endfor %}
-          </div>
-
-          <!-- Castle Target form -->
-          <div style="margin-top:0.75rem;padding-top:0.65rem;border-top:1px solid var(--border);">
-            <form method="post" action="/admin/parties/woe/{{ party.id }}/castle"
-                  style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;">
+          <div style="display:flex;align-items:center;gap:0.4rem;flex-shrink:0;">
+            <span class="party-count-badge" id="cnt-{{ party.id }}">{{ party.members|length }}/5</span>
+            <form method="post" action="{{ url_for('admin_woe_delete_party', party_id=party.id) }}"
+                  onsubmit="return confirm('Delete {{ party.name | e }}?')" style="margin:0;">
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-              <label style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.07em;color:var(--text-muted);white-space:nowrap;">🏯 Castle</label>
-              <input type="text" name="target_castle"
-                     value="{{ party.target_castle or '' }}"
-                     placeholder="e.g. Prontera Chivalry"
-                     class="form-control"
-                     style="flex:1;min-width:0;font-size:0.8rem;padding:0.3rem 0.55rem;">
-              <button type="submit" class="btn btn-outline btn-sm" style="font-size:0.75rem;white-space:nowrap;">Save</button>
+              <button type="submit" class="btn btn-red btn-xs">✕</button>
             </form>
           </div>
-
         </div>
-        {% endfor %}
+
+        <div class="sortable-list party-list" data-party-id="{{ party.id }}">
+          {% for m in party.members %}
+          <div class="member-chip {% if m.is_support %}support-chip{% endif %}" data-member-id="{{ m.id }}">
+            <span class="drag-handle">⣿</span>
+            <div class="chip-body">
+              <div class="chip-name">{{ m.name }}</div>
+              <div class="chip-meta">
+                <span class="chip-job">{{ m.job }}</span>
+                <span class="chip-power">{{ "{:,}".format(m.power) }}</span>
+              </div>
+            </div>
+            <div class="att-badge {% if m.attendance == 'attending' %}attending{% elif m.attendance == 'absent' %}absent{% else %}no-response{% endif %}"></div>
+            <button class="chip-btn chip-assign-btn" onclick="openAssignModal({{ m.id }}, {{ m.name | tojson }})" title="Move to another party">＋</button>
+            <button class="chip-btn chip-remove-btn" onclick="removeChip({{ m.id }}, this)" title="Return to unassigned">↩</button>
+          </div>
+          {% else %}
+          <div class="empty-drop">Drop or tap ＋ to assign members</div>
+          {% endfor %}
+        </div>
+
+        <!-- Castle target -->
+        <div class="card-notes-row">
+          <form method="post" action="/admin/parties/woe/{{ party.id }}/castle" class="notes-inline-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="text" name="target_castle" class="form-control form-control-sm"
+                   placeholder="🏯 Target castle…" value="{{ party.target_castle or '' }}">
+            <button type="submit" class="btn btn-outline btn-xs">Save</button>
+          </form>
+        </div>
+
+        <!-- Notes -->
+        <div class="card-notes-row" style="border-top:none;padding-top:0;">
+          <form method="post" action="{{ url_for('admin_woe_save_notes', party_id=party.id) }}" class="notes-inline-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="text" name="notes" class="form-control form-control-sm"
+                   placeholder="📝 Party notes…" value="{{ party.notes }}">
+            <button type="submit" class="btn btn-outline btn-xs">Save</button>
+          </form>
+        </div>
       </div>
+      {% endfor %}
+    </div>
     {% else %}
-      <div class="empty-state">
-        <p>No WoE parties yet. Use Auto-Distribute or create parties manually.</p>
-      </div>
+    <div class="empty-state">
+      <p>No WoE parties yet. Use Auto-Distribute or create parties manually.</p>
+    </div>
     {% endif %}
   </div>
 </div>
 
-<div style="margin-top:1rem;font-size:0.78rem;color:var(--text-muted);">
-  <span style="border-left:3px solid var(--gold);padding-left:6px;">Gold border chip = Support job (Bard/Priest)</span> &nbsp;&nbsp;
+<div class="party-legend">
+  <span style="border-left:3px solid var(--gold);padding-left:6px;">Gold border = Support (Bard/Priest)</span> &nbsp;
   <span class="att-badge attending" style="display:inline-block;vertical-align:middle;"></span> Attending &nbsp;
   <span class="att-badge absent" style="display:inline-block;vertical-align:middle;"></span> Absent &nbsp;
   <span class="att-badge no-response" style="display:inline-block;vertical-align:middle;"></span> No Response
 </div>
 
-<!-- WoE Maps section -->
+<!-- WoE Maps -->
 <div style="margin-top:2.5rem;">
   <div class="section-divider" style="margin-bottom:1.25rem;">WoE Maps</div>
   <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1.25rem;">
-
     <div class="card" style="padding:0;overflow:hidden;">
-      <div style="padding:0.65rem 1rem;border-bottom:1px solid var(--border);font-weight:600;font-size:0.85rem;display:flex;align-items:center;gap:0.5rem;">
-        🗺 Lower WoE Map
-      </div>
+      <div style="padding:0.65rem 1rem;border-bottom:1px solid var(--border);font-weight:600;font-size:0.85rem;">🗺 Lower WoE Map</div>
       <a href="/static/images/lower_woe_map.png" class="lightbox-trigger" style="display:block;">
-        <img src="/static/images/lower_woe_map.png" alt="Lower WoE Map"
-             style="width:100%;display:block;object-fit:contain;max-height:420px;">
+        <img src="/static/images/lower_woe_map.png" alt="Lower WoE Map" style="width:100%;display:block;object-fit:contain;max-height:420px;">
       </a>
     </div>
-
     <div class="card" style="padding:0;overflow:hidden;">
-      <div style="padding:0.65rem 1rem;border-bottom:1px solid var(--border);font-weight:600;font-size:0.85rem;display:flex;align-items:center;gap:0.5rem;">
-        🗺 Upper WoE Map
-      </div>
+      <div style="padding:0.65rem 1rem;border-bottom:1px solid var(--border);font-weight:600;font-size:0.85rem;">🗺 Upper WoE Map</div>
       <a href="/static/images/upper_woe_map.png" class="lightbox-trigger" style="display:block;">
-        <img src="/static/images/upper_woe_map.png" alt="Upper WoE Map"
-             style="width:100%;display:block;object-fit:contain;max-height:420px;">
+        <img src="/static/images/upper_woe_map.png" alt="Upper WoE Map" style="width:100%;display:block;object-fit:contain;max-height:420px;">
       </a>
     </div>
+  </div>
+</div>
 
+<!-- Quick-assign modal -->
+<div id="assign-modal" class="qassign-overlay" onclick="if(event.target===this)closeAssignModal()">
+  <div class="qassign-box">
+    <div class="qassign-header">
+      <div>Assign <strong id="qassign-name"></strong> to…</div>
+      <button class="btn btn-outline btn-xs" onclick="closeAssignModal()">✕</button>
+    </div>
+    <div id="qassign-list" class="qassign-list"></div>
+    <button class="btn btn-outline btn-sm qassign-unassign-btn" onclick="doAssign(null)">↩ Return to Unassigned</button>
   </div>
 </div>
 {% endblock %}
 
 {% block scripts %}
 <script>
-  const MOVE_URL = "{{ url_for('admin_woe_move') }}";
+const MOVE_URL = "{{ url_for('admin_woe_move') }}";
+const PARTIES  = [{% for p in parties %}{ id: {{ p.id }}, name: {{ p.name | tojson }} },{% endfor %}];
+let _qMemberId = null;
 
-  function moveRequest(memberId, partyId) {
-    fetch(MOVE_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ member_id: parseInt(memberId), party_id: partyId ? parseInt(partyId) : null })
-    }).catch(err => console.error('Move failed:', err));
+function moveRequest(memberId, partyId) {
+  fetch(MOVE_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ member_id: parseInt(memberId), party_id: partyId ? parseInt(partyId) : null })
+  }).catch(e => console.error('Move failed:', e));
+}
+
+function refreshPoolCount() {
+  const n = document.querySelectorAll('#pool-unassigned .member-chip').length;
+  document.getElementById('pool-count').textContent = '(' + n + ')';
+}
+
+function refreshPartyCount(partyId) {
+  if (!partyId) return;
+  const sl = document.querySelector('.party-list[data-party-id="' + partyId + '"]');
+  const el = document.getElementById('cnt-' + partyId);
+  if (sl && el) el.textContent = sl.querySelectorAll('.member-chip').length + '/5';
+}
+
+function ensureEmptyDrop(listEl) {
+  if (listEl.querySelectorAll('.member-chip').length === 0 && !listEl.querySelector('.empty-drop')) {
+    const d = document.createElement('div');
+    d.className = 'empty-drop';
+    d.textContent = 'Drop or tap ＋ to assign members';
+    listEl.appendChild(d);
   }
+}
 
-  function initSortables() {
-    const lists = document.querySelectorAll('.sortable-list');
-    lists.forEach(el => {
-      Sortable.create(el, {
-        group: { name: 'woe-members', pull: true, put: true },
-        animation: 150,
-        handle: '.drag-handle',
-        ghostClass: 'sortable-ghost',
-        chosenClass: 'sortable-chosen',
-        onAdd(evt) {
-          const memberId = evt.item.dataset.memberId;
-          const partyId = evt.to.dataset.partyId || null;
-          moveRequest(memberId, partyId);
-          evt.to.querySelectorAll('.empty-drop').forEach(e => e.remove());
-        }
-      });
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('pool-search').addEventListener('input', function() {
+    const q = this.value.toLowerCase().trim();
+    document.querySelectorAll('#pool-unassigned .member-chip').forEach(c => {
+      const name = c.querySelector('.chip-name').textContent.toLowerCase();
+      const job  = c.querySelector('.chip-job').textContent.toLowerCase();
+      c.style.display = (!q || name.includes(q) || job.includes(q)) ? '' : 'none';
     });
-  }
+  });
+  initSortables();
+});
 
-  document.addEventListener('DOMContentLoaded', initSortables);
+function togglePool() {
+  const body = document.getElementById('pool-body');
+  const btn  = document.getElementById('pool-toggle');
+  const open = body.style.display !== 'none';
+  body.style.display = open ? 'none' : '';
+  btn.textContent = open ? '▼' : '▲';
+}
+
+function removeChip(memberId, btn) {
+  const chip     = btn.closest('.member-chip');
+  const fromList = chip.closest('.sortable-list');
+  const fromId   = fromList ? fromList.dataset.partyId : null;
+  moveRequest(memberId, null);
+  const pool = document.getElementById('pool-unassigned');
+  pool.querySelectorAll('.pool-empty').forEach(e => e.remove());
+  pool.appendChild(chip);
+  if (fromId) { refreshPartyCount(fromId); ensureEmptyDrop(fromList); }
+  refreshPoolCount();
+}
+
+function openAssignModal(memberId, memberName) {
+  _qMemberId = memberId;
+  document.getElementById('qassign-name').textContent = memberName;
+  const list = document.getElementById('qassign-list');
+  list.innerHTML = '';
+  PARTIES.forEach(p => {
+    const sl  = document.querySelector('.sortable-list[data-party-id="' + p.id + '"]');
+    const cnt = sl ? sl.querySelectorAll('.member-chip').length : 0;
+    const btn = document.createElement('button');
+    btn.className = 'qassign-party-btn';
+    btn.innerHTML = '<span>' + p.name + '</span><span class="qassign-cnt">' + cnt + '/5</span>';
+    btn.onclick = () => doAssign(p.id);
+    list.appendChild(btn);
+  });
+  document.getElementById('assign-modal').style.display = 'flex';
+}
+
+function closeAssignModal() {
+  _qMemberId = null;
+  document.getElementById('assign-modal').style.display = 'none';
+}
+
+function doAssign(partyId) {
+  if (_qMemberId === null) return;
+  const mid      = _qMemberId;
+  moveRequest(mid, partyId);
+  const chip     = document.querySelector('.member-chip[data-member-id="' + mid + '"]');
+  const fromList = chip ? chip.closest('.sortable-list') : null;
+  const fromId   = fromList ? fromList.dataset.partyId : null;
+  if (chip) {
+    if (partyId !== null) {
+      const target = document.querySelector('.sortable-list[data-party-id="' + partyId + '"]');
+      if (target) { target.querySelectorAll('.empty-drop').forEach(e => e.remove()); target.appendChild(chip); refreshPartyCount(partyId); }
+    } else {
+      const pool = document.getElementById('pool-unassigned');
+      pool.querySelectorAll('.pool-empty').forEach(e => e.remove());
+      pool.appendChild(chip);
+    }
+    if (fromId) { refreshPartyCount(fromId); ensureEmptyDrop(fromList); }
+    refreshPoolCount();
+  }
+  closeAssignModal();
+}
+
+function initSortables() {
+  document.querySelectorAll('.sortable-list').forEach(el => {
+    Sortable.create(el, {
+      group: { name: 'woe', pull: true, put: true },
+      animation: 150,
+      handle: '.drag-handle',
+      ghostClass: 'sortable-ghost',
+      chosenClass: 'sortable-chosen',
+      delay: 120,
+      delayOnTouchOnly: true,
+      touchStartThreshold: 5,
+      onAdd(evt) {
+        const mid    = evt.item.dataset.memberId;
+        const toId   = evt.to.dataset.partyId || null;
+        const fromId = evt.from.dataset.partyId || null;
+        moveRequest(mid, toId);
+        evt.to.querySelectorAll('.empty-drop').forEach(e => e.remove());
+        if (fromId) { refreshPartyCount(fromId); ensureEmptyDrop(evt.from); }
+        if (toId)   refreshPartyCount(toId);
+        refreshPoolCount();
+      }
+    });
+  });
+}
 </script>
 {% endblock %}

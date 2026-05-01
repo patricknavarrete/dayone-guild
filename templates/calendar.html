@@ -1,0 +1,162 @@
+{% extends 'base.html' %}
+{% block title %}Event Calendar — DayOne{% endblock %}
+
+{% block content %}
+<h1 class="page-title">📅 Event Calendar</h1>
+
+<div class="cal-nav">
+  <a href="{{ url_for('calendar_view', year=prev_year, month=prev_month) }}" class="btn btn-outline btn-sm" aria-label="Previous month">‹ Prev</a>
+  <span class="cal-month-label">{{ month_name }} {{ year }}</span>
+  <a href="{{ url_for('calendar_view', year=next_year, month=next_month) }}" class="btn btn-outline btn-sm" aria-label="Next month">Next ›</a>
+</div>
+
+<div class="cal-legend">
+  <span class="cal-dot gl"></span><span>Guild League</span>
+  <span class="cal-dot woe"></span><span>WoE</span>
+  <span class="att-pill attending">Attending</span>
+  <span class="att-pill absent">Absent</span>
+  <span class="att-pill no-response">No Response</span>
+</div>
+
+<div class="cal-grid">
+  {% for label in ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'] %}
+  <div class="cal-head">{{ label }}</div>
+  {% endfor %}
+
+  {% for _ in range(leading) %}<div class="cal-cell cal-blank"></div>{% endfor %}
+
+  {% for day in days %}
+  <div class="cal-cell{% if day.is_today %} cal-today{% endif %}{% if not day.is_gl and not day.is_woe %} cal-quiet{% endif %}">
+    <span class="cal-day-num">{{ day.day }}</span>
+
+    {% if day.is_gl %}
+    <div class="cal-event gl">
+      <span class="cal-event-label">⚔ GL</span>
+      {% if day.gl_att %}
+        <span class="att-pill {{ day.gl_att }}">{{ day.gl_att|title }}</span>
+      {% else %}
+        <span class="att-pill no-response">–</span>
+      {% endif %}
+    </div>
+    {% endif %}
+
+    {% if day.is_woe %}
+    <div class="cal-event woe">
+      <span class="cal-event-label">🏰 WoE</span>
+      {% if day.woe_att %}
+        <span class="att-pill {{ day.woe_att }}">{{ day.woe_att|title }}</span>
+      {% else %}
+        <span class="att-pill no-response">–</span>
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+  {% endfor %}
+
+  {% for _ in range(trailing) %}<div class="cal-cell cal-blank"></div>{% endfor %}
+</div>
+{% endblock %}
+
+{% block head %}
+<style>
+.cal-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+.cal-month-label {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.4rem;
+  letter-spacing: 0.05em;
+  color: var(--text);
+}
+.cal-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin-bottom: 1rem;
+}
+.cal-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+.cal-dot.gl  { background: var(--gold); }
+.cal-dot.woe { background: #7c3aed; }
+
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 3px;
+}
+.cal-head {
+  text-align: center;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  padding: 0.4rem 0;
+}
+.cal-cell {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  min-height: 72px;
+  padding: 0.35rem 0.4rem 0.4rem;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.cal-blank  { background: transparent; border: none; }
+.cal-quiet  { opacity: 0.55; }
+.cal-today  { border-color: var(--gold); box-shadow: 0 0 0 1px var(--gold); }
+.cal-day-num {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  line-height: 1;
+}
+.cal-today .cal-day-num {
+  color: var(--gold);
+}
+.cal-event {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+.cal-event-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.cal-event.gl  .cal-event-label { color: var(--gold); }
+.cal-event.woe .cal-event-label { color: #7c3aed; }
+
+.att-pill {
+  display: inline-block;
+  font-size: 0.6rem;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 99px;
+  white-space: nowrap;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.att-pill.attending  { background: #dcfce7; color: #166534; }
+.att-pill.absent     { background: #fee2e2; color: #991b1b; }
+.att-pill.no-response { background: var(--surface2); color: var(--text-muted); }
+
+@media (max-width: 480px) {
+  .cal-cell    { min-height: 58px; padding: 0.25rem; }
+  .cal-event-label { font-size: 0.6rem; }
+  .att-pill    { font-size: 0.55rem; padding: 1px 4px; }
+}
+</style>
+{% endblock %}

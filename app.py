@@ -22,8 +22,15 @@ UPLOAD_FOLDER = os.path.join('static', 'uploads')
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
 MAX_CONTENT_LENGTH = 16 * 1024 * 1024
 
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-app.config['MAX_CONTENT_LENGTH'] = MAX_CONTENT_LENGTH
+app.config['UPLOAD_FOLDER']          = UPLOAD_FOLDER
+app.config['MAX_CONTENT_LENGTH']     = MAX_CONTENT_LENGTH
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+app.config['SESSION_COOKIE_SECURE']   = os.environ.get('FLASK_ENV') != 'development'
+
+VAPID_PRIVATE_KEY = os.environ.get('VAPID_PRIVATE_KEY', '')
+VAPID_PUBLIC_KEY  = os.environ.get('VAPID_PUBLIC_KEY', '')
+VAPID_CLAIMS      = {'sub': 'mailto:' + os.environ.get('MAIL_USERNAME', 'admin@dayone.guild')}
 
 SUPPORT_JOBS = {'High Priest', 'Bard', 'Dancer', 'Summoner', 'Apprentice'}
 
@@ -57,6 +64,41 @@ def _admin_record_failure(ip: str) -> None:
 
 def _admin_clear(ip: str) -> None:
     _admin_failed.pop(ip, None)
+
+
+# ── General rate limiting ─────────────────────────────────────────────────────
+
+_rate_limits: dict[str, list[float]] = {}
+
+def _check_rate_limit(key: str, max_calls: int = 20, window_secs: int = 60) -> bool:
+    now = time.time()
+    calls = [t for t in _rate_limits.get(key, []) if now - t < window_secs]
+    if len(calls) >= max_calls:
+        return False
+    calls.append(now)
+    _rate_limits[key] = calls
+    return True
+
+
+# ── Security headers ──────────────────────────────────────────────────────────
+
+@app.after_request
+def _add_security_headers(response):
+    csp = (
+        "default-src 'self'; "
+        "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+        "font-src 'self' https://fonts.gstatic.com; "
+        "img-src 'self' data: blob:; "
+        "connect-src 'self'; "
+        "worker-src 'self'; "
+        "manifest-src 'self';"
+    )
+    response.headers.setdefault('Content-Security-Policy', csp)
+    response.headers.setdefault('X-Content-Type-Options', 'nosniff')
+    response.headers.setdefault('X-Frame-Options', 'SAMEORIGIN')
+    response.headers.setdefault('Referrer-Policy', 'strict-origin-when-cross-origin')
+    return response
 
 
 def _setup_uploads():
@@ -166,7 +208,8 @@ def _inject_globals():
         except Exception:
             return 0
     return dict(csrf_token=_get_csrf_token, ticker_items=ticker,
-                recruitment_status=recruit, notif_count=notif_count)
+                recruitment_status=recruit, notif_count=notif_count,
+                vapid_public_key=VAPID_PUBLIC_KEY)
 
 
 def csrf_protect(f):
@@ -232,6 +275,23 @@ def _migrate_db(db):
             is_read INTEGER DEFAULT 0,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (member_id) REFERENCES members(id)
+        )""",
+        """CREATE TABLE IF NOT EXISTS push_subscriptions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            member_id INTEGER NOT NULL,
+            endpoint TEXT NOT NULL,
+            p256dh TEXT NOT NULL,
+            auth TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(endpoint)
+        )""",
+        """CREATE TABLE IF NOT EXISTS push_notification_log (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            event_type TEXT NOT NULL,
+            event_date TEXT NOT NULL,
+            window_label TEXT NOT NULL,
+            sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(event_type, event_date, window_label)
         )""",
     ]
     for sql in migrations:
@@ -314,10 +374,22 @@ def save_upload(field_name):
         return None
     if not allowed_file(f.filename):
         return None
-    ext = f.filename.rsplit('.', 1)[1].lower()
-    unique_name = f"{field_name}_{int(datetime.now(timezone.utc).timestamp())}_{random.randint(1000, 9999)}.{ext}"
-    filepath = os.path.join(app.config['UPLOAD_FOLDER'], unique_name)
-    f.save(filepath)
+    stem = f"{field_name}_{int(datetime.now(timezone.utc).timestamp())}_{random.randint(1000,9999)}"
+    raw = f.read()
+    try:
+        from PIL import Image
+        import io as _io
+        img = Image.open(_io.BytesIO(raw))
+        img.thumbnail((900, 900), Image.LANCZOS)
+        unique_name = f"{stem}.webp"
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], unique_name)
+        img.save(filepath, 'WEBP', quality=85)
+    except Exception:
+        ext = f.filename.rsplit('.', 1)[1].lower()
+        unique_name = f"{stem}.{ext}"
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], unique_name)
+        with open(filepath, 'wb') as fh:
+            fh.write(raw)
     return f"uploads/{unique_name}"
 
 
@@ -716,6 +788,9 @@ def profile():
     mid = session['member_id']
 
     if request.method == 'POST':
+        if not _check_rate_limit(f'profile:{mid}', max_calls=15, window_secs=60):
+            flash('Too many requests. Please slow down.', 'error')
+            return redirect(url_for('profile'))
         action = request.form.get('action', '')
 
         if action == 'update_free':
@@ -877,6 +952,9 @@ def profile():
 @login_required
 @csrf_protect
 def mark_attendance():
+    if not _check_rate_limit(f'att:{_client_ip()}', max_calls=30, window_secs=60):
+        flash('Too many requests. Please slow down.', 'error')
+        return redirect(url_for('roster'))
     event_type = request.form.get('event_type')
     event_date = request.form.get('event_date')
     status     = request.form.get('status')
@@ -917,8 +995,11 @@ def mark_attendance():
         (session['member_id'], event_type, event_date, status, note)
     )
     db.commit()
-    flash(f"Attendance marked as {'Attending' if status == 'attending' else 'Absent'}.", 'success')
 
+    if request.headers.get('X-Fetch') == '1':
+        return jsonify({'ok': True, 'status': status})
+
+    flash(f"Attendance marked as {'Attending' if status == 'attending' else 'Absent'}.", 'success')
     redirect_map = {'roster': 'roster', 'guild_league': 'guild_league', 'woe': 'woe'}
     return redirect(url_for(redirect_map.get(next_page, 'roster')))
 
@@ -1327,6 +1408,12 @@ def admin_gl_move():
     if not member_id:
         return jsonify({'error': 'member_id required'}), 400
     db = get_db()
+    if party_id:
+        count = db.execute(
+            "SELECT COUNT(*) as c FROM gl_party_members WHERE party_id=?", (party_id,)
+        ).fetchone()['c']
+        if count >= 5:
+            return jsonify({'error': 'full'}), 400
     db.execute("DELETE FROM gl_party_members WHERE member_id=?", (member_id,))
     if party_id:
         db.execute("INSERT OR IGNORE INTO gl_party_members (party_id, member_id) VALUES (?,?)",
@@ -1444,6 +1531,12 @@ def admin_woe_move():
     if not member_id:
         return jsonify({'error': 'member_id required'}), 400
     db = get_db()
+    if party_id:
+        count = db.execute(
+            "SELECT COUNT(*) as c FROM woe_party_members WHERE party_id=?", (party_id,)
+        ).fetchone()['c']
+        if count >= 5:
+            return jsonify({'error': 'full'}), 400
     db.execute("DELETE FROM woe_party_members WHERE member_id=?", (member_id,))
     if party_id:
         db.execute("INSERT OR IGNORE INTO woe_party_members (party_id, member_id) VALUES (?,?)",
@@ -1800,6 +1893,188 @@ def admin_power_history(member_id):
         labels = [member['created_at'][:10]]
         values = [member['power']]
     return jsonify({'labels': labels, 'values': values, 'name': member['name']})
+
+
+# ── Event Calendar ───────────────────────────────────────────────────────────
+
+@app.route('/calendar')
+@login_required
+def calendar_view():
+    import calendar as _cal
+    mid   = session['member_id']
+    today = datetime.now(PHT).date()
+    year  = request.args.get('year',  today.year,  type=int)
+    month = request.args.get('month', today.month, type=int)
+    # clamp
+    if month < 1:  month = 12; year -= 1
+    if month > 12: month = 1;  year += 1
+
+    _, days_in_month = _cal.monthrange(year, month)
+    first_dow = _cal.monthrange(year, month)[0]  # 0=Mon … 6=Sun
+
+    db = get_db()
+    att_rows = db.execute(
+        "SELECT event_date, event_type, status FROM attendance "
+        "WHERE member_id=? AND event_date LIKE ?",
+        (mid, f"{year}-{month:02d}-%")
+    ).fetchall()
+    att_map = {(r['event_date'], r['event_type']): r['status'] for r in att_rows}
+
+    days = []
+    for d in range(1, days_in_month + 1):
+        day    = date(year, month, d)
+        wd     = day.weekday()  # 0=Mon … 6=Sun
+        is_gl  = wd in (1, 3)  # Tue, Thu
+        is_woe = wd == 6       # Sun
+        ds     = str(day)
+        days.append({
+            'date':    day,
+            'day':     d,
+            'weekday': wd,
+            'is_gl':   is_gl,
+            'is_woe':  is_woe,
+            'is_today': day == today,
+            'gl_att':  att_map.get((ds, 'guild_league')),
+            'woe_att': att_map.get((ds, 'woe')),
+        })
+
+    # Pad to full weeks
+    leading  = first_dow          # blanks before day 1
+    trailing = (7 - (leading + days_in_month) % 7) % 7
+
+    prev_month = month - 1 or 12
+    prev_year  = year - (1 if month == 1 else 0)
+    next_month = month % 12 + 1
+    next_year  = year + (1 if month == 12 else 0)
+
+    return render_template('calendar.html',
+        year=year, month=month, month_name=date(year, month, 1).strftime('%B'),
+        today=today, days=days, leading=leading, trailing=trailing,
+        prev_month=prev_month, prev_year=prev_year,
+        next_month=next_month, next_year=next_year,
+    )
+
+
+# ── Push notification helpers ─────────────────────────────────────────────────
+
+def _send_push(sub_info: dict, title: str, body: str, url: str = '/') -> bool:
+    if not VAPID_PRIVATE_KEY:
+        return False
+    try:
+        import json as _json
+        from pywebpush import webpush, WebPushException
+        webpush(
+            subscription_info=sub_info,
+            data=_json.dumps({'title': title, 'body': body, 'url': url}),
+            vapid_private_key=VAPID_PRIVATE_KEY,
+            vapid_claims=VAPID_CLAIMS,
+        )
+        return True
+    except Exception:
+        return False
+
+
+def _push_scheduler_loop():
+    import sqlite3 as _sq
+    while True:
+        time.sleep(1800)  # run every 30 minutes
+        if not VAPID_PRIVATE_KEY:
+            continue
+        try:
+            now    = datetime.now(PHT)
+            events = get_next_event_dates()
+            checks = [
+                ('guild_league', events.get('gl_next'), events.get('gl_dt_iso'),
+                 '/guild-league', '⚔ Guild League'),
+                ('woe', events.get('woe_next'), events.get('woe_dt_iso'),
+                 '/woe', '🏰 War of Emperium'),
+            ]
+            db = _sq.connect(DATABASE)
+            db.row_factory = _sq.Row
+            for etype, edate, edt_iso, url, label in checks:
+                if not edt_iso or not edate:
+                    continue
+                event_dt = datetime.fromisoformat(edt_iso)
+                diff_h   = (event_dt - now).total_seconds() / 3600
+                windows  = [
+                    ('1day',  22.5, 25.0, f'{label} is tomorrow! Mark your attendance.'),
+                    ('3hour',  2.5,  3.5, f'{label} starts in 3 hours! Don\'t forget to attend.'),
+                ]
+                for window_label, lo, hi, msg in windows:
+                    if not (lo <= diff_h <= hi):
+                        continue
+                    try:
+                        db.execute(
+                            'INSERT INTO push_notification_log '
+                            '(event_type, event_date, window_label) VALUES (?,?,?)',
+                            (etype, str(edate), window_label)
+                        )
+                        db.commit()
+                    except _sq.IntegrityError:
+                        continue  # already sent
+                    subs = db.execute(
+                        'SELECT endpoint, p256dh, auth FROM push_subscriptions'
+                    ).fetchall()
+                    for sub in subs:
+                        _send_push(
+                            {'endpoint': sub['endpoint'],
+                             'keys': {'p256dh': sub['p256dh'], 'auth': sub['auth']}},
+                            label, msg, url
+                        )
+                        time.sleep(0.05)
+            db.close()
+        except Exception:
+            pass
+
+
+import threading as _threading
+_push_thread = _threading.Thread(target=_push_scheduler_loop, daemon=True)
+_push_thread.start()
+
+
+@app.route('/push/vapid-key')
+def push_vapid_key():
+    return jsonify({'key': VAPID_PUBLIC_KEY})
+
+
+@app.route('/push/subscribe', methods=['POST'])
+@login_required
+def push_subscribe():
+    data     = request.get_json() or {}
+    endpoint = data.get('endpoint')
+    p256dh   = (data.get('keys') or {}).get('p256dh')
+    auth     = (data.get('keys') or {}).get('auth')
+    if not all([endpoint, p256dh, auth]):
+        return jsonify({'error': 'missing fields'}), 400
+    mid = session['member_id']
+    db  = get_db()
+    db.execute(
+        'INSERT OR REPLACE INTO push_subscriptions (member_id, endpoint, p256dh, auth) '
+        'VALUES (?,?,?,?)',
+        (mid, endpoint, p256dh, auth)
+    )
+    db.commit()
+    return jsonify({'ok': True})
+
+
+@app.route('/push/unsubscribe', methods=['POST'])
+@login_required
+def push_unsubscribe():
+    data     = request.get_json() or {}
+    endpoint = data.get('endpoint')
+    if endpoint:
+        db = get_db()
+        db.execute('DELETE FROM push_subscriptions WHERE endpoint=?', (endpoint,))
+        db.commit()
+    return jsonify({'ok': True})
+
+
+@app.route('/sw.js')
+def service_worker():
+    resp = app.make_response(app.send_static_file('sw.js'))
+    resp.headers['Content-Type']        = 'application/javascript'
+    resp.headers['Service-Worker-Allowed'] = '/'
+    return resp
 
 
 # ── Init & Run ────────────────────────────────────────────────────────────────

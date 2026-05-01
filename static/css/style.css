@@ -1503,3 +1503,153 @@ select.form-control {
   .party-member-row { min-height: 48px; }
   .party-member-row .member-name { font-size: 0.95rem; }
 }
+
+/* ── Bottom Navigation Bar ─────────────────────────────────────────────────── */
+
+.bottom-nav {
+  display: none; /* hidden on desktop */
+}
+
+@media (max-width: 768px) {
+  /* push content above the bottom nav */
+  .container { padding-bottom: calc(68px + env(safe-area-inset-bottom, 0px)); }
+
+  .bottom-nav {
+    display: flex;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 200;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    box-shadow: 0 -2px 12px rgba(0,0,0,0.08);
+  }
+
+  .bn-item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    padding: 8px 4px 6px;
+    color: var(--text-muted);
+    text-decoration: none;
+    font-size: 0.62rem;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    transition: color 0.15s;
+    min-height: 52px;
+  }
+
+  .bn-item svg { transition: stroke 0.15s; }
+
+  .bn-item.active,
+  .bn-item:hover {
+    color: var(--gold);
+  }
+
+  .bn-item.active svg,
+  .bn-item:hover svg {
+    stroke: var(--gold);
+  }
+
+  /* hide desktop navbar links on mobile to reduce clutter */
+  .navbar .nav-links { display: none; }
+  .menu-toggle { display: flex; }
+}
+
+/* ── Sticky Attendance Banner ──────────────────────────────────────────────── */
+
+@media (max-width: 768px) {
+  .event-banner {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    margin-left: -1rem;
+    margin-right: -1rem;
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+  }
+}
+
+/* ── Focus Outlines (accessibility) ───────────────────────────────────────── */
+
+.btn:focus-visible,
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+
+/* ── Attendance Badge — color-blind shape indicator ───────────────────────── */
+
+.att-badge-text.attending::before  { content: '✓ '; font-weight: 900; }
+.att-badge-text.absent::before     { content: '✕ '; font-weight: 900; }
+.att-badge-text.no-response::before { content: '? '; font-weight: 900; }
+
+/* ── Skeleton Loading ──────────────────────────────────────────────────────── */
+
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position:  200% 0; }
+}
+
+.skeleton-box {
+  background: linear-gradient(90deg, var(--surface2) 25%, var(--border) 50%, var(--surface2) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s infinite;
+  border-radius: 4px;
+}
+
+.photo-wrap img {
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.photo-wrap img.img-loaded {
+  opacity: 1;
+}
+
+.photo-wrap:not(:has(img.img-loaded)) .no-photo,
+.photo-wrap:not(:has(.img-loaded)) {
+  /* show skeleton while image loads */
+}
+
+/* ── Pull-to-Refresh Indicator ────────────────────────────────────────────── */
+
+#ptr-indicator {
+  position: fixed;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%) translateY(-60px);
+  background: var(--gold);
+  color: #fff;
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 6px 18px;
+  border-radius: 0 0 20px 20px;
+  z-index: 300;
+  transition: transform 0.2s ease;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+#ptr-indicator.ptr-visible {
+  transform: translateX(-50%) translateY(0);
+}
+
+/* ── Optimistic Attendance Feedback ───────────────────────────────────────── */
+
+.att-actions .btn-att-loading {
+  opacity: 0.5;
+  pointer-events: none;
+}
+

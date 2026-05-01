@@ -39,7 +39,7 @@
         <td style="padding:0.65rem 0.75rem;">
           <div style="display:flex;align-items:center;gap:0.6rem;">
             {% if entry.photo_path %}
-              <img src="{{ url_for('static', filename=entry.photo_path) }}" alt="{{ entry.name }}"
+              <img src="{{ url_for('static', filename=entry.photo_path) }}" alt="{{ entry.name }}" loading="lazy"
                    style="width:36px;height:36px;object-fit:cover;border-radius:50%;border:2px solid var(--border);flex-shrink:0;">
             {% else %}
               <div style="width:36px;height:36px;border-radius:50%;background:var(--surface2);border:2px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:1rem;flex-shrink:0;">⚔</div>

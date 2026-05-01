@@ -51,8 +51,8 @@
             </div>
           </div>
           <div class="att-badge {% if m.attendance == 'attending' %}attending{% elif m.attendance == 'absent' %}absent{% else %}no-response{% endif %}"></div>
-          <button class="chip-btn chip-assign-btn" onclick="openAssignModal({{ m.id }}, {{ m.name | tojson }})" title="Quick assign to party">＋</button>
-          <button class="chip-btn chip-remove-btn" onclick="removeChip({{ m.id }}, this)" title="Return to unassigned">↩</button>
+          <button class="chip-btn chip-assign-btn" aria-label="Quick assign to party" onclick="openAssignModal({{ m.id }}, {{ m.name | tojson }})" title="Quick assign to party">＋</button>
+          <button class="chip-btn chip-remove-btn" aria-label="Return to unassigned" onclick="removeChip({{ m.id }}, this)" title="Return to unassigned">↩</button>
         </div>
         {% else %}
         <div class="pool-empty">All members assigned</div>
@@ -96,8 +96,8 @@
               </div>
             </div>
             <div class="att-badge {% if m.attendance == 'attending' %}attending{% elif m.attendance == 'absent' %}absent{% else %}no-response{% endif %}"></div>
-            <button class="chip-btn chip-assign-btn" onclick="openAssignModal({{ m.id }}, {{ m.name | tojson }})" title="Move to another party">＋</button>
-            <button class="chip-btn chip-remove-btn" onclick="removeChip({{ m.id }}, this)" title="Return to unassigned">↩</button>
+            <button class="chip-btn chip-assign-btn" aria-label="Move to another party" onclick="openAssignModal({{ m.id }}, {{ m.name | tojson }})" title="Move to another party">＋</button>
+            <button class="chip-btn chip-remove-btn" aria-label="Return to unassigned" onclick="removeChip({{ m.id }}, this)" title="Return to unassigned">↩</button>
           </div>
           {% else %}
           <div class="empty-drop">Drop or tap ＋ to assign members</div>
@@ -175,16 +175,36 @@
 
 {% block scripts %}
 <script>
-const MOVE_URL = "{{ url_for('admin_woe_move') }}";
-const PARTIES  = [{% for p in parties %}{ id: {{ p.id }}, name: {{ p.name | tojson }} },{% endfor %}];
-let _qMemberId = null;
+const MOVE_URL  = "{{ url_for('admin_woe_move') }}";
+const PARTIES   = [{% for p in parties %}{ id: {{ p.id }}, name: {{ p.name | tojson }} },{% endfor %}];
+const PARTY_MAX = 5;
+let _qMemberId  = null;
+
+function showToast(msg) {
+  let t = document.getElementById('party-toast');
+  if (!t) {
+    t = document.createElement('div');
+    t.id = 'party-toast';
+    t.style.cssText = 'position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);background:#c91f1f;color:#fff;padding:0.6rem 1.2rem;border-radius:8px;font-size:0.88rem;font-weight:600;z-index:9999;box-shadow:0 4px 16px rgba(0,0,0,0.4);pointer-events:none;transition:opacity 0.3s;';
+    document.body.appendChild(t);
+  }
+  t.textContent = msg;
+  t.style.opacity = '1';
+  clearTimeout(t._hide);
+  t._hide = setTimeout(() => { t.style.opacity = '0'; }, 2500);
+}
 
 function moveRequest(memberId, partyId) {
-  fetch(MOVE_URL, {
+  return fetch(MOVE_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ member_id: parseInt(memberId), party_id: partyId ? parseInt(partyId) : null })
-  }).catch(e => console.error('Move failed:', e));
+  }).then(r => r.json()).catch(e => console.error('Move failed:', e));
+}
+
+function partyCount(partyId) {
+  const sl = document.querySelector('.party-list[data-party-id="' + partyId + '"]');
+  return sl ? sl.querySelectorAll('.member-chip').length : 0;
 }
 
 function refreshPoolCount() {
@@ -264,7 +284,16 @@ function closeAssignModal() {
 
 function doAssign(partyId) {
   if (_qMemberId === null) return;
-  const mid      = _qMemberId;
+  const mid = _qMemberId;
+  if (partyId !== null) {
+    const chip   = document.querySelector('.member-chip[data-member-id="' + mid + '"]');
+    const fromId = chip ? chip.closest('.sortable-list').dataset.partyId : null;
+    if (String(fromId) !== String(partyId) && partyCount(partyId) >= PARTY_MAX) {
+      showToast('⚠ Party is full (max ' + PARTY_MAX + ' members)');
+      closeAssignModal();
+      return;
+    }
+  }
   moveRequest(mid, partyId);
   const chip     = document.querySelector('.member-chip[data-member-id="' + mid + '"]');
   const fromList = chip ? chip.closest('.sortable-list') : null;
@@ -295,6 +324,16 @@ function initSortables() {
       delay: 120,
       delayOnTouchOnly: true,
       touchStartThreshold: 5,
+      onMove(evt) {
+        const toId = evt.to.dataset.partyId;
+        if (toId) {
+          const fromId = evt.from.dataset.partyId;
+          if (String(fromId) !== String(toId) && partyCount(toId) >= PARTY_MAX) {
+            showToast('⚠ Party is full (max ' + PARTY_MAX + ' members)');
+            return false;
+          }
+        }
+      },
       onAdd(evt) {
         const mid    = evt.item.dataset.memberId;
         const toId   = evt.to.dataset.partyId || null;

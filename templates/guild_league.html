@@ -145,5 +145,26 @@ function confirmAbsent() {
 document.getElementById('absent-note-input').addEventListener('input', function() {
   document.getElementById('absent-char-count').textContent = this.value.length + ' / 300';
 });
+
+// Optimistic attendance
+document.querySelectorAll('.att-actions form').forEach(form => {
+  form.addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const status = e.submitter ? e.submitter.value : form.querySelector('[name=status]').value;
+    const fd     = new FormData(form);
+    const badge  = form.closest('.event-banner')?.querySelector('.current-att');
+    const btns   = form.querySelectorAll('button');
+    btns.forEach(b => b.classList.add('btn-att-loading'));
+    if (badge) {
+      badge.className = 'att-badge-text ' + status + ' current-att';
+      badge.innerHTML = '<span class="dot"></span>' + (status === 'attending' ? 'Attending' : 'Absent');
+    }
+    try {
+      const resp = await fetch(form.action, { method: 'POST', headers: { 'X-Fetch': '1' }, body: fd });
+      if (!resp.ok) throw new Error();
+    } catch { form.submit(); }
+    finally { btns.forEach(b => b.classList.remove('btn-att-loading')); }
+  });
+});
 </script>
 {% endblock %}

@@ -459,8 +459,64 @@ def admin_required(f):
 @app.route('/')
 def index():
     if 'member_id' in session:
-        return redirect(url_for('roster'))
+        return redirect(url_for('home'))
     return redirect(url_for('login'))
+
+
+@app.route('/home')
+@login_required
+def home():
+    db  = get_db()
+    mid = session['member_id']
+    events  = get_next_event_dates()
+    gl_att  = get_attendance(mid, 'guild_league', events['gl_next'])
+    woe_att = get_attendance(mid, 'woe', events['woe_next'])
+
+    gl_party_row = db.execute(
+        """SELECT p.id, p.name, p.is_sub
+           FROM gl_party_members pm
+           JOIN gl_parties p ON p.id = pm.party_id
+           WHERE pm.member_id = ?""", (mid,)
+    ).fetchone()
+    gl_party_members = []
+    if gl_party_row:
+        rows = db.execute(
+            """SELECT m.name, m.job FROM gl_party_members pm
+               JOIN members m ON m.id = pm.member_id
+               WHERE pm.party_id = ? AND m.status='approved'""",
+            (gl_party_row['id'],)
+        ).fetchall()
+        gl_party_members = [dict(r) for r in rows]
+
+    woe_party_row = db.execute(
+        """SELECT p.id, p.name, p.target_castle
+           FROM woe_party_members pm
+           JOIN woe_parties p ON p.id = pm.party_id
+           WHERE pm.member_id = ?""", (mid,)
+    ).fetchone()
+    woe_party_members = []
+    if woe_party_row:
+        rows = db.execute(
+            """SELECT m.name, m.job FROM woe_party_members pm
+               JOIN members m ON m.id = pm.member_id
+               WHERE pm.party_id = ? AND m.status='approved'""",
+            (woe_party_row['id'],)
+        ).fetchall()
+        woe_party_members = [dict(r) for r in rows]
+
+    announcements = db.execute(
+        "SELECT * FROM announcements WHERE is_active=1 ORDER BY is_pinned DESC, created_at DESC LIMIT 6"
+    ).fetchall()
+
+    att_rate = get_attendance_rate(db, mid)
+    member   = db.execute("SELECT name, job, photo_path FROM members WHERE id=?", (mid,)).fetchone()
+
+    return render_template('home.html',
+        events=events, gl_att=gl_att, woe_att=woe_att,
+        gl_party=gl_party_row, gl_party_members=gl_party_members,
+        woe_party=woe_party_row, woe_party_members=woe_party_members,
+        announcements=announcements, att_rate=att_rate, member=member,
+    )
 
 
 @app.route('/register', methods=['GET', 'POST'])
@@ -1000,7 +1056,7 @@ def mark_attendance():
         return jsonify({'ok': True, 'status': status})
 
     flash(f"Attendance marked as {'Attending' if status == 'attending' else 'Absent'}.", 'success')
-    redirect_map = {'roster': 'roster', 'guild_league': 'guild_league', 'woe': 'woe'}
+    redirect_map = {'roster': 'roster', 'guild_league': 'guild_league', 'woe': 'woe', 'home': 'home'}
     return redirect(url_for(redirect_map.get(next_page, 'roster')))
 
 

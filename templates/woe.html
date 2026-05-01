@@ -3,6 +3,10 @@
 
 {% block content %}
 <h1 class="page-title">🏰 War of Emperium Parties</h1>
+<div class="find-party-bar">
+  <input type="text" id="party-search" class="form-control" placeholder="🔍 Search member name..." style="max-width:260px;">
+  <button class="btn btn-outline btn-sm" id="find-my-party-btn" type="button">⚔ Find My Party</button>
+</div>
 
 {% if next_woe %}
 <div class="event-banner" {% if next_woe_iso %}data-countdown="{{ next_woe_iso }}"{% endif %}>
@@ -45,7 +49,7 @@
       </div>
       <ul class="party-member-list">
         {% for m in party.members %}
-        <li class="party-member-row {% if m.is_support %}support-highlight{% endif %}">
+        <li class="party-member-row {% if m.is_support %}support-highlight{% endif %}" data-name="{{ m.name }}"{% if m.id == session.member_id %} data-me="1"{% endif %}>
           <div class="att-badge {% if m.attendance == 'attending' %}attending{% elif m.attendance == 'absent' %}absent{% else %}no-response{% endif %}"></div>
           <div class="member-name">{{ m.name }}</div>
           <div class="member-job">{{ m.job }}</div>
@@ -137,6 +141,43 @@ document.querySelectorAll('.att-actions form').forEach(form => {
     } catch { form.submit(); }
     finally { btns.forEach(b => b.classList.remove('btn-att-loading')); }
   });
+});
+
+// Party member search + Find My Party
+const partySearch = document.getElementById('party-search');
+
+function highlightPartySearch(q) {
+  document.querySelectorAll('.party-card').forEach(card => card.classList.remove('party-highlight'));
+  document.querySelectorAll('.party-member-row').forEach(row => row.classList.remove('row-highlight'));
+  if (!q) return;
+  const ql = q.toLowerCase();
+  document.querySelectorAll('.party-member-row').forEach(row => {
+    const name = (row.dataset.name || row.querySelector('.member-name')?.textContent || '').toLowerCase();
+    if (name.includes(ql)) {
+      row.classList.add('row-highlight');
+      row.closest('.party-card')?.classList.add('party-highlight');
+    }
+  });
+  const first = document.querySelector('.party-card.party-highlight');
+  if (first) first.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+if (partySearch) {
+  partySearch.addEventListener('input', function() { highlightPartySearch(this.value.trim()); });
+}
+
+document.getElementById('find-my-party-btn')?.addEventListener('click', function() {
+  const myRow = document.querySelector('.party-member-row[data-me="1"]');
+  if (myRow) {
+    document.querySelectorAll('.party-card').forEach(c => c.classList.remove('party-highlight'));
+    document.querySelectorAll('.party-member-row').forEach(r => r.classList.remove('row-highlight'));
+    myRow.classList.add('row-highlight');
+    myRow.closest('.party-card')?.classList.add('party-highlight');
+    myRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  } else {
+    const bar = document.querySelector('.find-party-bar');
+    if (bar) { bar.style.color = 'var(--red)'; setTimeout(() => bar.style.color = '', 2000); }
+  }
 });
 </script>
 {% endblock %}

@@ -519,7 +519,7 @@ def home():
 
     att_rate_data = get_attendance_rate(db, mid)
     att_rate = att_rate_data['pct']
-    member   = db.execute("SELECT name, job, photo_path FROM members WHERE id=?", (mid,)).fetchone()
+    member   = db.execute("SELECT name, job, photo_path, power FROM members WHERE id=?", (mid,)).fetchone()
 
     return render_template('home.html',
         events=events, gl_att=gl_att, woe_att=woe_att,

@@ -95,10 +95,9 @@
     <div class="sb-cell accent">{{ request.endpoint or 'admin' }}</div>
   </footer>
 
+  <!-- Sidebar backdrop mobile — inside .app so z-index:99 stays below sidebar z-index:100 -->
+  <div id="sidebar-overlay" style="display:none;position:fixed;inset:0;z-index:99;background:rgba(0,0,0,0.6);"></div>
 </div>
-
-<!-- Sidebar backdrop mobile -->
-<div id="sidebar-overlay" style="display:none;position:fixed;inset:0;z-index:99;background:rgba(0,0,0,0.5);"></div>
 
 <!-- Image lightbox -->
 <div id="img-modal" class="modal-overlay">

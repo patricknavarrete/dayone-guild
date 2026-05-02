@@ -1066,14 +1066,14 @@ select.form-control { cursor: pointer; }
 .qassign-section-lbl { font-size: 9px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--ink-mute); padding: 4px 0; margin-top: 4px; }
 .qassign-party-btn {
   appearance: none; background: rgba(26,32,48,0.8); border: 1px solid var(--line-2);
-  color: var(--ink-dim); cursor: pointer; padding: 8px 12px; text-align: left;
-  font-family: var(--font-mono); font-size: 11px; display: flex; align-items: center; justify-content: space-between;
-  transition: all 0.1s;
+  color: var(--ink-dim); cursor: pointer; padding: 10px 14px; text-align: left;
+  font-family: var(--font-mono); font-size: 12px; display: flex; align-items: center; justify-content: space-between;
+  transition: all 0.1s; touch-action: manipulation; min-height: 44px; width: 100%;
 }
 .qassign-party-btn:hover { border-color: var(--cyan); color: var(--ink); background: rgba(54,232,224,0.08); }
 .qassign-party-btn--sub { opacity: 0.75; }
 .qassign-cnt { font-size: 10px; color: var(--ink-mute); }
-.qassign-unassign-btn { width: 100%; justify-content: center; margin-top: 4px; }
+.qassign-unassign-btn { width: 100%; justify-content: center; margin-top: 4px; touch-action: manipulation; min-height: 44px; }
 
 /* create-party inline form */
 .create-party-form { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }

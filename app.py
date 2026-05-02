@@ -607,7 +607,7 @@ def register():
 @csrf_protect
 def login():
     if 'member_id' in session:
-        return redirect(url_for('roster'))
+        return redirect(url_for('home'))
     if request.method == 'POST':
         username = request.form.get('username', '').strip()
         password = request.form.get('password', '').strip()
@@ -625,7 +625,7 @@ def login():
             return render_template('login.html')
         session['member_id'] = member['id']
         session['member_name'] = member['name']
-        return redirect(url_for('roster'))
+        return redirect(url_for('home'))
     db = get_db()
     recruit = get_recruitment_status(db)
     return render_template('login.html', recruitment=recruit)

@@ -229,6 +229,10 @@ function ensureEmptyDrop(listEl) {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+  // Move modal to body root so it escapes .app stacking context
+  const _am = document.getElementById('assign-modal');
+  if (_am) document.body.appendChild(_am);
+
   document.getElementById('pool-search').addEventListener('input', function() {
     const q = this.value.toLowerCase().trim();
     document.querySelectorAll('#pool-unassigned .member-chip').forEach(c => {
@@ -269,9 +273,10 @@ function openAssignModal(memberId, memberName) {
     const sl  = document.querySelector('.sortable-list[data-party-id="' + p.id + '"]');
     const cnt = sl ? sl.querySelectorAll('.member-chip').length : 0;
     const btn = document.createElement('button');
+    btn.type = 'button';
     btn.className = 'qassign-party-btn';
     btn.innerHTML = '<span>' + p.name + '</span><span class="qassign-cnt">' + cnt + '/5</span>';
-    btn.onclick = () => doAssign(p.id);
+    btn.addEventListener('click', function() { doAssign(p.id); });
     list.appendChild(btn);
   });
   document.getElementById('assign-modal').style.display = 'flex';

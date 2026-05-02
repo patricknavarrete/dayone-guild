@@ -4,39 +4,48 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Admin Login — DayOne</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
-  <div class="auth-page">
-    <div class="auth-card">
-      <div class="logo">
-        <div class="hexagon">D1</div>
-        <span class="guild-name" style="color:var(--gold);">DayOne</span>
-      </div>
-      <h2 style="color:var(--absent);">Admin Access</h2>
+<div class="bg-field"></div>
+<div class="bg-grid"></div>
+<div class="bg-noise"></div>
+<div class="bg-scanlines"></div>
+<div class="bg-vignette"></div>
 
-      {% with messages = get_flashed_messages(with_categories=true) %}
-        {% for category, message in messages %}
-          <div class="alert alert-{{ category }}">{{ message }}</div>
-        {% endfor %}
-      {% endwith %}
-
-      <form method="post" action="{{ url_for('admin_login') }}">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <div class="form-group">
-          <label class="form-label">Admin Password</label>
-          <input type="password" name="password" class="form-control" placeholder="••••••••" required autofocus>
-        </div>
-        <button type="submit" class="btn btn-primary w-full btn-lg" style="width:100%;justify-content:center;background:var(--gold);color:#000;">Enter Admin Panel</button>
-      </form>
-
-      <div style="text-align:center;margin-top:1rem;">
-        <a href="{{ url_for('login') }}" style="font-size:0.82rem;color:var(--text-muted);">← Back to member login</a>
+<div class="auth-shell">
+  <div class="auth-overlay-grid"></div>
+  <div class="auth-scanline"></div>
+  <div class="auth-card">
+    <div class="auth-brand">
+      <div class="auth-brand-logo" style="border-color:var(--magenta);color:var(--magenta);background:rgba(255,95,212,0.12);">D1</div>
+      <div>
+        <div class="auth-brand-name">DayOne</div>
+        <div class="auth-brand-sub" style="color:var(--magenta);">Admin Access</div>
       </div>
     </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for category, message in messages %}
+        <div class="alert alert-{{ category }}">{{ message }}</div>
+      {% endfor %}
+    {% endwith %}
+
+    <form method="post" action="{{ url_for('admin_login') }}" class="auth-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="auth-field">
+        <label style="color:var(--magenta);">Admin Password</label>
+        <input type="password" name="password" placeholder="••••••••" required autofocus autocomplete="current-password">
+      </div>
+      <button type="submit" class="btn" style="width:100%;justify-content:center;background:rgba(255,95,212,0.1);border-color:var(--magenta);color:var(--magenta);">Enter Admin Panel</button>
+    </form>
+
+    <div class="auth-foot">
+      <a href="{{ url_for('login') }}">← Back to member login</a>
+    </div>
   </div>
-  <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</div>
+
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
 </body>
 </html>

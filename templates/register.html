@@ -2,27 +2,42 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Register — DayOne Guild</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
-  <div style="max-width:680px;margin:0 auto;padding:2rem 1rem;">
-    <div style="text-align:center;margin-bottom:1.5rem;">
-      <div style="display:inline-flex;align-items:center;gap:0.75rem;">
-        <div class="hexagon">D1</div>
-        <span class="guild-name" style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:var(--gold);letter-spacing:0.1em;">DayOne</span>
+<div class="bg-field"></div>
+<div class="bg-grid"></div>
+<div class="bg-noise"></div>
+<div class="bg-scanlines"></div>
+<div class="bg-vignette"></div>
+
+<div class="auth-shell">
+  <div class="auth-overlay-grid"></div>
+  <div class="auth-scanline"></div>
+
+  <div class="auth-card">
+    <div class="auth-brand">
+      <div class="auth-brand-logo">D1</div>
+      <div>
+        <div class="auth-brand-name">DayOne</div>
+        <div class="auth-brand-sub">Guild Registration</div>
       </div>
-      <h1 style="font-size:1.8rem;margin-top:0.5rem;color:var(--gold);">Guild Registration</h1>
-      <p class="text-muted" style="font-size:0.875rem;margin-top:0.25rem;">Fill in your details. An admin will review and approve your account.</p>
-      {% if recruitment == 'closed' %}
-      <div class="recruit-badge closed" style="margin-top:0.75rem;">🔴 Guild is not currently recruiting</div>
-      {% else %}
-      <div class="recruit-badge open" style="margin-top:0.75rem;">🟢 Guild is open to new members!</div>
-      {% endif %}
     </div>
+
+    <div class="auth-tabs">
+      <a href="{{ url_for('login') }}" class="auth-tab">Login</a>
+      <span class="auth-tab active">Register</span>
+    </div>
+
+    {% if recruitment == 'closed' %}
+    <div class="recruit-badge closed" style="margin-bottom:14px;display:block;">Recruitment Closed</div>
+    {% else %}
+    <div class="recruit-badge open" style="margin-bottom:14px;display:block;">Guild is Recruiting</div>
+    {% endif %}
+
+    <p style="font-size:11px;color:var(--ink-mute);margin-bottom:16px;letter-spacing:0.04em;">Fill in your details. An admin will review and approve your account.</p>
 
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% for category, message in messages %}
@@ -30,151 +45,131 @@
       {% endfor %}
     {% endwith %}
 
-    <form method="post" action="{{ url_for('register') }}" enctype="multipart/form-data">
+    <form method="post" action="{{ url_for('register') }}" enctype="multipart/form-data" class="auth-form">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-      <div class="form-section">
-        <h2>Account</h2>
-        <div class="form-row">
-          <div class="form-group">
-            <label class="form-label">Username <span style="color:var(--red)">*</span></label>
-            <input type="text" name="username" class="form-control" placeholder="Choose a username" required>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Email Address <span style="color:var(--red)">*</span></label>
-            <input type="email" name="email" class="form-control" placeholder="your@email.com" required>
-            <p class="form-hint">Used for password recovery only</p>
-          </div>
+
+      <div class="auth-section-head">Account</div>
+      <div class="auth-grid-2">
+        <div class="auth-field">
+          <label>Username <span style="color:var(--red)">*</span></label>
+          <input type="text" name="username" placeholder="Choose a username" required autocomplete="username">
         </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label class="form-label">Password <span style="color:var(--red)">*</span></label>
-            <input type="password" name="password" id="reg-password" class="form-control" placeholder="Minimum 6 characters" required minlength="6">
-          </div>
-          <div class="form-group">
-            <label class="form-label">Confirm Password <span style="color:var(--red)">*</span></label>
-            <input type="password" name="confirm_password" id="reg-confirm" class="form-control" placeholder="Repeat your password" required minlength="6">
-            <p class="form-hint" id="pw-match-hint" style="display:none;"></p>
-          </div>
+        <div class="auth-field">
+          <label>Email Address <span style="color:var(--red)">*</span></label>
+          <input type="email" name="email" placeholder="your@email.com" required>
+          <span class="auth-hint">Used for password recovery only</span>
+        </div>
+        <div class="auth-field">
+          <label>Password <span style="color:var(--red)">*</span></label>
+          <input type="password" name="password" id="reg-password" placeholder="Minimum 6 characters" required minlength="6" autocomplete="new-password">
+        </div>
+        <div class="auth-field">
+          <label>Confirm Password <span style="color:var(--red)">*</span></label>
+          <input type="password" name="confirm_password" id="reg-confirm" placeholder="Repeat your password" required minlength="6" autocomplete="new-password">
+          <span class="auth-hint" id="pw-match-hint" style="display:none;"></span>
         </div>
       </div>
 
-      <div class="form-section">
-        <h2>Character Info</h2>
-        <div class="form-row">
-          <div class="form-group">
-            <label class="form-label">Character Name <span style="color:var(--red)">*</span></label>
-            <input type="text" name="name" class="form-control" placeholder="In-game name" required>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Job / Class <span style="color:var(--red)">*</span></label>
-            <select name="job" class="form-control" required>
-              <option value="" disabled selected>Select your job...</option>
-              <option>Lord Knight</option>
-              <option>Paladin</option>
-              <option>Hunter</option>
-              <option>Bard</option>
-              <option>Dancer</option>
-              <option>High Wizard</option>
-              <option>Professor/Sage</option>
-              <option>High Priest</option>
-              <option>Monk</option>
-              <option>Assassin Cross</option>
-              <option>Rogue</option>
-              <option>MasterSmith</option>
-              <option>Biochemist</option>
-              <option>Summoner</option>
-              <option>Apprentice</option>
-            </select>
-          </div>
+      <div class="auth-section-head">Character Info</div>
+      <div class="auth-grid-2">
+        <div class="auth-field">
+          <label>Character Name <span style="color:var(--red)">*</span></label>
+          <input type="text" name="name" placeholder="In-game name" required>
         </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label class="form-label">Power (Battle Power) <span style="color:var(--red)">*</span></label>
-            <input type="number" name="power" class="form-control" placeholder="e.g. 85000" required min="0">
-          </div>
-          <div class="form-group">
-            <label class="form-label">Character Photo</label>
-            <input type="file" name="photo" class="form-control" accept="image/*">
-            <p class="form-hint">PNG, JPG, GIF up to 16 MB</p>
-          </div>
+        <div class="auth-field">
+          <label>Job / Class <span style="color:var(--red)">*</span></label>
+          <select name="job" required>
+            <option value="" disabled selected>Select your job...</option>
+            <option>Lord Knight</option>
+            <option>Paladin</option>
+            <option>Hunter</option>
+            <option>Bard</option>
+            <option>Dancer</option>
+            <option>High Wizard</option>
+            <option>Professor/Sage</option>
+            <option>High Priest</option>
+            <option>Monk</option>
+            <option>Assassin Cross</option>
+            <option>Rogue</option>
+            <option>MasterSmith</option>
+            <option>Biochemist</option>
+            <option>Summoner</option>
+            <option>Apprentice</option>
+          </select>
         </div>
-        <div class="form-group">
-          <label class="form-label">Notes / Introduction</label>
-          <textarea name="notes" class="form-control" placeholder="Tell the guild a bit about yourself..."></textarea>
+        <div class="auth-field">
+          <label>Power (Battle Power) <span style="color:var(--red)">*</span></label>
+          <input type="number" name="power" placeholder="e.g. 85000" required min="0">
+        </div>
+        <div class="auth-field">
+          <label>Character Photo</label>
+          <input type="file" name="photo" accept="image/*">
+          <span class="auth-hint">PNG, JPG up to 16 MB</span>
+        </div>
+      </div>
+      <div class="auth-field auth-full">
+        <label>Notes / Introduction</label>
+        <textarea name="notes" placeholder="Tell the guild a bit about yourself..."></textarea>
+      </div>
+
+      <div class="auth-section-head">Screenshots</div>
+      <p style="font-size:10px;color:var(--ink-mute);margin-bottom:12px;">Screenshots are used by the admin for verification.</p>
+      <div class="auth-grid-2">
+        <div class="auth-field">
+          <label>Power Screenshot <span style="color:var(--red)">*</span></label>
+          <input type="file" name="power_screenshot" accept="image/*">
+          <span class="auth-hint">Screenshot showing your battle power</span>
+        </div>
+        <div class="auth-field">
+          <label>Equipment Screenshot <span style="color:var(--red)">*</span></label>
+          <input type="file" name="equipment_screenshot" accept="image/*">
+          <span class="auth-hint">Screenshot of your gear/equipment</span>
+        </div>
+        <div class="auth-field">
+          <label>Quasi Stats Screenshot <span style="color:var(--red)">*</span></label>
+          <input type="file" name="quasi_stats_screenshot" accept="image/*">
+          <span class="auth-hint">Character stats / quasi stats window</span>
         </div>
       </div>
 
-      <div class="form-section">
-        <h2>Screenshots</h2>
-        <p class="text-muted mb-2" style="font-size:0.85rem;">Screenshots are used by the admin for verification.</p>
-        <div class="form-row">
-          <div class="form-group">
-            <label class="form-label">Power Screenshot <span style="color:var(--red)">*</span></label>
-            <input type="file" name="power_screenshot" class="form-control" accept="image/*">
-            <p class="form-hint">Screenshot showing your battle power</p>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Equipment Screenshot <span style="color:var(--red)">*</span></label>
-            <input type="file" name="equipment_screenshot" class="form-control" accept="image/*">
-            <p class="form-hint">Screenshot of your gear/equipment</p>
-          </div>
-        </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label class="form-label">Character Stats (Quasi Stats) Screenshot <span style="color:var(--red)">*</span></label>
-            <input type="file" name="quasi_stats_screenshot" class="form-control" accept="image/*">
-            <p class="form-hint">Screenshot of your character stats / quasi stats window</p>
-          </div>
-          <div></div>
-        </div>
+      <div class="auth-section-head">Anti-Bot Check</div>
+      <div class="auth-field" style="max-width:200px;">
+        <label>What is {{ captcha_q }}? <span style="color:var(--red)">*</span></label>
+        <input type="number" name="captcha" placeholder="Enter the answer" required>
       </div>
 
-      <div class="form-section">
-        <h2>Anti-Bot Check</h2>
-        <div class="form-group">
-          <label class="form-label">What is {{ captcha_q }}? <span style="color:var(--red)">*</span></label>
-          <input type="number" name="captcha" class="form-control" placeholder="Enter the answer" required style="max-width:200px;">
-        </div>
-      </div>
-
-      <div style="display:flex;gap:1rem;align-items:center;flex-wrap:wrap;">
-        <button type="submit" class="btn btn-primary btn-lg">Submit Registration</button>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:8px;">
+        <button type="submit" class="btn solid">Submit Registration</button>
         <a href="{{ url_for('login') }}" class="btn btn-outline">Back to Login</a>
       </div>
     </form>
   </div>
-  <script src="{{ url_for('static', filename='js/main.js') }}"></script>
-  <script>
-    const pwField  = document.getElementById('reg-password');
-    const cfField  = document.getElementById('reg-confirm');
-    const hint     = document.getElementById('pw-match-hint');
-    const form     = document.querySelector('form');
+</div>
 
-    function checkMatch() {
-      if (!cfField.value) { hint.style.display = 'none'; return; }
-      if (pwField.value === cfField.value) {
-        hint.style.display = 'block';
-        hint.style.color   = 'var(--green)';
-        hint.textContent   = '✓ Passwords match';
-      } else {
-        hint.style.display = 'block';
-        hint.style.color   = 'var(--absent)';
-        hint.textContent   = '✕ Passwords do not match';
-      }
-    }
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+<script>
+const pwField = document.getElementById('reg-password');
+const cfField = document.getElementById('reg-confirm');
+const hint    = document.getElementById('pw-match-hint');
+const form    = document.querySelector('form');
 
-    pwField.addEventListener('input', checkMatch);
-    cfField.addEventListener('input', checkMatch);
-
-    form.addEventListener('submit', function(e) {
-      if (pwField.value !== cfField.value) {
-        e.preventDefault();
-        hint.style.display = 'block';
-        hint.style.color   = 'var(--absent)';
-        hint.textContent   = '✕ Passwords do not match';
-        cfField.focus();
-      }
-    });
-  </script>
+function checkMatch() {
+  if (!cfField.value) { hint.style.display = 'none'; return; }
+  if (pwField.value === cfField.value) {
+    hint.style.display = 'block'; hint.style.color = 'var(--green)'; hint.textContent = '✓ Passwords match';
+  } else {
+    hint.style.display = 'block'; hint.style.color = 'var(--red)'; hint.textContent = '✕ Passwords do not match';
+  }
+}
+pwField.addEventListener('input', checkMatch);
+cfField.addEventListener('input', checkMatch);
+form.addEventListener('submit', function(e) {
+  if (pwField.value !== cfField.value) {
+    e.preventDefault();
+    hint.style.display = 'block'; hint.style.color = 'var(--red)'; hint.textContent = '✕ Passwords do not match';
+    cfField.focus();
+  }
+});
+</script>
 </body>
 </html>

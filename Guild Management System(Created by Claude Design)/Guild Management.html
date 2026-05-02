@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>DAYONE//GUILD — Cyberpunk Guild Management</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div id="root"></div>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <script type="text/babel" src="tweaks-panel.jsx"></script>
+  <script type="text/babel" src="data.jsx"></script>
+  <script type="text/babel" src="atoms.jsx"></script>
+  <script type="text/babel" src="shell.jsx"></script>
+  <script type="text/babel" src="dashboard.jsx"></script>
+  <script type="text/babel" src="roster.jsx"></script>
+  <script type="text/babel" src="parties.jsx"></script>
+  <script type="text/babel" src="other.jsx"></script>
+  <script type="text/babel" src="auth.jsx"></script>
+  <script type="text/babel" src="mascots.jsx"></script>
+
+  <script type="text/babel">
+    const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+      "accentHue": 180,
+      "scanlines": 40,
+      "glitch": 60,
+      "crt": 80,
+      "density": "regular",
+      "partyLayout": "grid",
+      "showTicker": true
+    }/*EDITMODE-END*/;
+
+    function App() {
+      const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
+      const [active, setActive] = React.useState('dashboard');
+      const [view, setView] = React.useState('app');
+
+      // Apply tweaks to root vars
+      React.useEffect(() => {
+        const r = document.documentElement;
+        // Accent shifts hue of cyan; keep lightness/chroma steady
+        const hueShift = t.accentHue - 180;
+        // We'll just remap --cyan / --grid-rgb via filter on root scope
+        r.style.setProperty('--scanline', (t.scanlines / 100).toString());
+        r.style.setProperty('--glitch', (t.glitch / 100).toString());
+        r.style.setProperty('--crt', (t.crt / 100).toString());
+
+        // Convert hue to a hex'ish accent
+        const h = t.accentHue;
+        const s = 100, l = 50;
+        const accent = `hsl(${h} ${s}% ${l}%)`;
+        r.style.setProperty('--cyan', accent);
+        r.style.setProperty('--cyan-soft', `hsl(${h} 80% 65%)`);
+        // Grid-rgb: rough mapping via hue (HSL → RGB approx for grid stripes)
+        const x = (n) => {
+          const k = (n + h / 30) % 12;
+          const a = s / 100 * Math.min(l/100, 1 - l/100);
+          return Math.round(255 * (l/100 - a * Math.max(-1, Math.min(k - 3, 9 - k, 1))));
+        };
+        r.style.setProperty('--grid-rgb', `${x(0)}, ${x(8)}, ${x(4)}`);
+        r.style.setProperty('--accent-rgb', `${x(0)}, ${x(8)}, ${x(4)}`);
+
+        // Density font size
+        const fs = t.density === 'compact' ? 12 : t.density === 'comfy' ? 14 : 13;
+        r.style.fontSize = fs + 'px';
+      }, [t]);
+
+      const screen = (() => {
+        switch (active) {
+          case 'dashboard':   return <Dashboard />;
+          case 'roster':      return <Roster />;
+          case 'parties':     return <Parties layout={t.partyLayout} />;
+          case 'woe':         return <WoeParties />;
+          case 'attendance':  return <Placeholder title="Attendance" />;
+          case 'leaderboard': return <Placeholder title="Leaderboard" />;
+          case 'officers':    return <Placeholder title="Officers" />;
+          case 'profile':     return <Placeholder title="My Profile" />;
+          case 'calendar':    return <Placeholder title="Calendar" />;
+          case 'notif':       return <Placeholder title="Notifications" />;
+          case 'admin':       return <AdminConsole />;
+          default:            return <Dashboard />;
+        }
+      })();
+
+      const switcher = (
+        <div className="screen-switcher">
+          <button className={view === 'app' && active !== 'admin' ? 'active' : ''} onClick={() => { setView('app'); setActive('dashboard'); }}>▣ APP</button>
+          <button className={view === 'login' ? 'active' : ''} onClick={() => setView('login')}>↳ LOGIN</button>
+          <button className={view === 'register' ? 'active' : ''} onClick={() => setView('register')}>+ REGISTER</button>
+          <button className={view === 'app' && active === 'admin' ? 'active' : ''} onClick={() => { setView('app'); setActive('admin'); }}>⚙ ADMIN</button>
+        </div>
+      );
+
+      if (view === 'login' || view === 'register') {
+        return (
+          <>
+            {switcher}
+            <AuthShell mode={view} onSwitch={setView} />
+          </>
+        );
+      }
+
+      return (
+        <>
+          {switcher}
+          <BgField />
+          <div className="app">
+            <Topbar />
+            <Sidebar active={active} onChange={setActive} />
+            <div className="main" data-screen-label={active}>
+              {screen}
+            </div>
+            <StatusBar active={active} />
+          </div>
+
+          <TweaksPanel title="Tweaks">
+            <TweakSection label="Aesthetic" />
+            <TweakSlider label="Accent hue" value={t.accentHue} min={0} max={360} unit="°"
+                         onChange={(v) => setTweak('accentHue', v)} />
+            <TweakSlider label="Scanline strength" value={t.scanlines} min={0} max={100} unit="%"
+                         onChange={(v) => setTweak('scanlines', v)} />
+            <TweakSlider label="Glitch intensity" value={t.glitch} min={0} max={100} unit="%"
+                         onChange={(v) => setTweak('glitch', v)} />
+            <TweakSlider label="CRT effects" value={t.crt} min={0} max={100} unit="%"
+                         onChange={(v) => setTweak('crt', v)} />
+
+            <TweakSection label="Layout" />
+            <TweakRadio label="Density" value={t.density}
+                        options={['compact', 'regular', 'comfy']}
+                        onChange={(v) => setTweak('density', v)} />
+            <TweakRadio label="Parties view" value={t.partyLayout}
+                        options={[{value: 'grid', label: 'grid'}, {value: 'list', label: 'detail'}]}
+                        onChange={(v) => setTweak('partyLayout', v)} />
+            <TweakToggle label="Show ticker" value={t.showTicker}
+                         onChange={(v) => setTweak('showTicker', v)} />
+
+            <TweakSection label="Hue presets" />
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6 }}>
+              {[
+                ['Cyan', 180],
+                ['Magenta', 320],
+                ['Lime', 80],
+                ['Amber', 35],
+                ['Violet', 270],
+                ['Rose', 350],
+                ['Emerald', 150],
+                ['Azure', 210],
+              ].map(([label, hue]) => (
+                <button key={label} className="twk-btn secondary" style={{ padding: '4px', fontSize: 10 }}
+                        onClick={() => setTweak('accentHue', hue)}>
+                  <span style={{ display: 'inline-block', width: 8, height: 8, background: `hsl(${hue} 100% 50%)`, marginRight: 4, verticalAlign: 'middle' }} />
+                  {label}
+                </button>
+              ))}
+            </div>
+          </TweaksPanel>
+        </>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

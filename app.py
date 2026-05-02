@@ -2,10 +2,19 @@ import os
 import random
 import secrets
 import sqlite3
+import subprocess
 import time
 from datetime import date, timedelta, datetime, timezone
 from functools import wraps
 from pathlib import Path
+
+# Cache-busting version string: git commit hash, falls back to timestamp
+try:
+    _STATIC_VER = subprocess.check_output(
+        ['git', 'rev-parse', '--short', 'HEAD'], stderr=subprocess.DEVNULL
+    ).decode().strip()
+except Exception:
+    _STATIC_VER = str(int(time.time()))
 
 from flask import (Flask, abort, flash, g, jsonify, redirect, render_template,
                    request, session, url_for)
@@ -209,7 +218,7 @@ def _inject_globals():
             return 0
     return dict(csrf_token=_get_csrf_token, ticker_items=ticker,
                 recruitment_status=recruit, notif_count=notif_count,
-                vapid_public_key=VAPID_PUBLIC_KEY)
+                vapid_public_key=VAPID_PUBLIC_KEY, static_ver=_STATIC_VER)
 
 
 def csrf_protect(f):

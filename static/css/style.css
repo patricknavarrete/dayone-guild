@@ -1135,10 +1135,15 @@ select.form-control { cursor: pointer; }
 
 /* ── Auth screens ── */
 .auth-shell {
-  position: fixed; inset: 0;
-  background: #070b14; overflow-y: auto;
+  position: relative;
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: #070b14;
+  -webkit-overflow-scrolling: touch;
   font-family: var(--font-mono); color: var(--ink); isolation: isolate;
 }
+/* Allow body to scroll on auth pages — fixes iOS keyboard hiding inputs */
+body:has(.auth-shell) { overflow-y: auto; height: auto; }
 .auth-bg { position: fixed; inset: 0; z-index: 0; }
 .auth-bg::after {
   content: ''; position: absolute; inset: 0;

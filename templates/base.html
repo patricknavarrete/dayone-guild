@@ -10,7 +10,7 @@
   <title>{% block title %}DayOne Guild{% endblock %}</title>
   <link rel="manifest" href="/static/manifest.json">
   <link rel="apple-touch-icon" href="/static/images/icon-192.png">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v={{ static_ver }}">
   {% block head %}{% endblock %}
 </head>
 <body>
@@ -191,7 +191,7 @@
   </div>
 </div>
 
-<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+<script src="{{ url_for('static', filename='js/main.js') }}?v={{ static_ver }}"></script>
 {% block scripts %}{% endblock %}
 
 {% if session.member_id %}

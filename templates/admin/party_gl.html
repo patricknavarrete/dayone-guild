@@ -44,7 +44,7 @@
         {% for m in unassigned %}
         <div class="member-chip {% if m.is_support %}support-chip{% endif %}" data-member-id="{{ m.id }}">
           <span class="drag-handle" title="Drag to assign">⣿</span>
-          <div class="chip-body" onclick="openAssignModal({{ m.id }}, {{ m.name | tojson }})">
+          <div class="chip-body" onclick='openAssignModal({{ m.id }}, {{ m.name | tojson }})'>
             <div class="chip-name">{{ m.name }}</div>
             <div class="chip-meta">
               <span class="chip-job">{{ m.job }}</span>
@@ -52,7 +52,7 @@
             </div>
           </div>
           <div class="att-badge {% if m.attendance == 'attending' %}attending{% elif m.attendance == 'absent' %}absent{% else %}no-response{% endif %}"></div>
-          <button class="chip-btn chip-assign-btn" aria-label="Quick assign to party" onclick="openAssignModal({{ m.id }}, {{ m.name | tojson }})" title="Quick assign to party">＋</button>
+          <button class="chip-btn chip-assign-btn" aria-label="Quick assign to party" onclick='openAssignModal({{ m.id }}, {{ m.name | tojson }})' title="Quick assign to party">＋</button>
           <button class="chip-btn chip-remove-btn" aria-label="Return to unassigned" onclick="removeChip({{ m.id }}, this)" title="Return to unassigned">↩</button>
         </div>
         {% else %}
@@ -87,7 +87,7 @@
           {% for m in party.members %}
           <div class="member-chip {% if m.is_support %}support-chip{% endif %}" data-member-id="{{ m.id }}">
             <span class="drag-handle">⣿</span>
-            <div class="chip-body" onclick="openAssignModal({{ m.id }}, {{ m.name | tojson }})">
+            <div class="chip-body" onclick='openAssignModal({{ m.id }}, {{ m.name | tojson }})'>
               <div class="chip-name">{{ m.name }}</div>
               <div class="chip-meta">
                 <span class="chip-job">{{ m.job }}</span>
@@ -95,7 +95,7 @@
               </div>
             </div>
             <div class="att-badge {% if m.attendance == 'attending' %}attending{% elif m.attendance == 'absent' %}absent{% else %}no-response{% endif %}"></div>
-            <button class="chip-btn chip-assign-btn" aria-label="Move to another party" onclick="openAssignModal({{ m.id }}, {{ m.name | tojson }})" title="Move to another party">＋</button>
+            <button class="chip-btn chip-assign-btn" aria-label="Move to another party" onclick='openAssignModal({{ m.id }}, {{ m.name | tojson }})' title="Move to another party">＋</button>
             <button class="chip-btn chip-remove-btn" aria-label="Return to unassigned" onclick="removeChip({{ m.id }}, this)" title="Return to unassigned">↩</button>
           </div>
           {% else %}
@@ -135,7 +135,7 @@
           {% for m in party.members %}
           <div class="member-chip {% if m.is_support %}support-chip{% endif %}" data-member-id="{{ m.id }}">
             <span class="drag-handle">⣿</span>
-            <div class="chip-body" onclick="openAssignModal({{ m.id }}, {{ m.name | tojson }})">
+            <div class="chip-body" onclick='openAssignModal({{ m.id }}, {{ m.name | tojson }})'>
               <div class="chip-name">{{ m.name }}</div>
               <div class="chip-meta">
                 <span class="chip-job">{{ m.job }}</span>
@@ -143,7 +143,7 @@
               </div>
             </div>
             <div class="att-badge {% if m.attendance == 'attending' %}attending{% elif m.attendance == 'absent' %}absent{% else %}no-response{% endif %}"></div>
-            <button class="chip-btn chip-assign-btn" aria-label="Move to another party" onclick="openAssignModal({{ m.id }}, {{ m.name | tojson }})" title="Move to another party">＋</button>
+            <button class="chip-btn chip-assign-btn" aria-label="Move to another party" onclick='openAssignModal({{ m.id }}, {{ m.name | tojson }})' title="Move to another party">＋</button>
             <button class="chip-btn chip-remove-btn" aria-label="Return to unassigned" onclick="removeChip({{ m.id }}, this)" title="Return to unassigned">↩</button>
           </div>
           {% else %}

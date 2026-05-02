@@ -260,6 +260,7 @@ document.querySelectorAll('.home-att-form').forEach(function(form){
     e.preventDefault();
     var status = e.submitter ? e.submitter.value : form.querySelector('[name=status]').value;
     var fd = new FormData(form);
+    fd.set('status', status);
     var chip = form.closest('.hd-event-card')?.querySelector('.hd-att-chip');
     var btns = form.querySelectorAll('button');
     btns.forEach(b=>b.classList.add('btn-att-loading'));

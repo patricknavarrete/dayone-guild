@@ -43,7 +43,7 @@
         {% for m in unassigned %}
         <div class="member-chip {% if m.is_support %}support-chip{% endif %}" data-member-id="{{ m.id }}">
           <span class="drag-handle" title="Drag to assign">⣿</span>
-          <div class="chip-body">
+          <div class="chip-body" onclick="openAssignModal({{ m.id }}, {{ m.name | tojson }})">
             <div class="chip-name">{{ m.name }}</div>
             <div class="chip-meta">
               <span class="chip-job">{{ m.job }}</span>
@@ -88,7 +88,7 @@
           {% for m in party.members %}
           <div class="member-chip {% if m.is_support %}support-chip{% endif %}" data-member-id="{{ m.id }}">
             <span class="drag-handle">⣿</span>
-            <div class="chip-body">
+            <div class="chip-body" onclick="openAssignModal({{ m.id }}, {{ m.name | tojson }})">
               <div class="chip-name">{{ m.name }}</div>
               <div class="chip-meta">
                 <span class="chip-job">{{ m.job }}</span>

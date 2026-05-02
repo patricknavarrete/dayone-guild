@@ -1029,7 +1029,7 @@ select.form-control { cursor: pointer; }
 .member-chip:hover { border-color: var(--line-3); }
 .member-chip.support-chip { border-left: 2px solid var(--yellow); }
 .drag-handle { color: var(--ink-mute); cursor: grab; font-size: 11px; flex-shrink: 0; }
-.chip-body { flex: 1; min-width: 0; }
+.chip-body { flex: 1; min-width: 0; cursor: pointer; }
 .chip-name { font-size: 11px; color: var(--ink); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .chip-meta { display: flex; gap: 8px; margin-top: 1px; }
 .chip-job   { font-size: 9px; color: var(--ink-mute); letter-spacing: 0.06em; }

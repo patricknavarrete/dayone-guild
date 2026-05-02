@@ -169,6 +169,7 @@ document.querySelectorAll('.att-actions form').forEach(form => {
     e.preventDefault();
     const status    = e.submitter ? e.submitter.value : form.querySelector('[name=status]').value;
     const fd        = new FormData(form);
+    fd.set('status', status);
     const badge     = form.closest('.event-banner')?.querySelector('.current-att');
     const btns      = form.querySelectorAll('button');
 

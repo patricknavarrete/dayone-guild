@@ -1,36 +1,33 @@
-// ── Mobile nav toggle ────────────────────────────────────────────────────────
+// ── Sidebar toggle (mobile) ───────────────────────────────────────────────────
 (function() {
-  var toggle   = document.querySelector('.menu-toggle');
-  var links    = document.querySelector('.nav-links');
-  var backdrop = document.getElementById('nav-backdrop');
-  if (!toggle || !links) return;
+  var toggle  = document.getElementById('sidebar-toggle');
+  var sidebar = document.querySelector('.sidebar');
+  var overlay = document.getElementById('sidebar-overlay');
+  if (!toggle || !sidebar) return;
 
-  function openMenu() {
-    links.classList.add('open');
+  function openSidebar() {
+    sidebar.classList.add('open');
     toggle.innerHTML = '✕';
-    if (backdrop) backdrop.style.cssText = 'display:block;';
+    if (overlay) overlay.style.display = 'block';
   }
-  function closeMenu() {
-    links.classList.remove('open');
+  function closeSidebar() {
+    sidebar.classList.remove('open');
     toggle.innerHTML = '&#9776;';
-    if (backdrop) backdrop.style.cssText = '';
+    if (overlay) overlay.style.display = 'none';
   }
 
   toggle.addEventListener('click', function() {
-    links.classList.contains('open') ? closeMenu() : openMenu();
+    sidebar.classList.contains('open') ? closeSidebar() : openSidebar();
   });
-  links.querySelectorAll('a').forEach(function(a) {
-    a.addEventListener('click', closeMenu);
+  sidebar.querySelectorAll('.nav-item').forEach(function(a) {
+    a.addEventListener('click', closeSidebar);
   });
-  if (backdrop) backdrop.addEventListener('click', closeMenu);
+  if (overlay) overlay.addEventListener('click', closeSidebar);
 })();
 
 // ── Active nav link ──────────────────────────────────────────────────────────
 const currentPath = window.location.pathname;
-document.querySelectorAll('.nav-links a').forEach(a => {
-  if (a.getAttribute('href') === currentPath) a.classList.add('active');
-});
-document.querySelectorAll('.admin-nav-links a').forEach(a => {
+document.querySelectorAll('.nav-item').forEach(a => {
   if (a.getAttribute('href') === currentPath) a.classList.add('active');
 });
 

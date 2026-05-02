@@ -1,9 +1,9 @@
 {% extends 'base.html' %}
-{% block title %}Home — DayOne{% endblock %}
+{% block title %}Dashboard — DayOne{% endblock %}
 
 {% block content %}
 
-<!-- ── Welcome Bar ── -->
+<!-- ── Welcome bar ── -->
 <div class="hd-welcome">
   <div class="hd-welcome-left">
     {% if member and member.photo_path %}
@@ -21,12 +21,32 @@
   </div>
 </div>
 
-<!-- ── Events ── -->
+<!-- ── KPI tiles ── -->
+<div class="kpi-grid">
+  <div class="kpi">
+    <div class="kpi-label">Attendance Rate</div>
+    <div class="kpi-value">{{ att_rate }}<span class="unit">%</span></div>
+  </div>
+  <div class="kpi alt">
+    <div class="kpi-label">GL Event</div>
+    <div class="kpi-value" style="font-size:14px;letter-spacing:0.06em;">{{ events.gl_next | fmtdate_noyear if events.gl_next else '—' }}</div>
+  </div>
+  <div class="kpi alt2">
+    <div class="kpi-label">WoE Event</div>
+    <div class="kpi-value" style="font-size:14px;letter-spacing:0.06em;">{{ events.woe_next | fmtdate_noyear if events.woe_next else '—' }}</div>
+  </div>
+  <div class="kpi alt3">
+    <div class="kpi-label">Battle Power</div>
+    <div class="kpi-value" style="font-size:16px;">{{ "{:,}".format(member.power) if member else '—' }}</div>
+  </div>
+</div>
+
+<!-- ── Upcoming Events ── -->
 <div class="hd-section-label">Upcoming Events</div>
 <div class="hd-events-row">
 
   <!-- GL Card -->
-  <div class="hd-event-card hd-gl">
+  <div class="hd-event-card">
     <img src="{{ url_for('static', filename='images/poring-angry.jpg') }}" class="hd-event-mascot" alt="">
     <div class="hd-event-top">
       <span class="hd-event-icon">⚔</span>
@@ -41,7 +61,7 @@
       {% endif %}
     </div>
     {% if events.gl_dt_iso %}
-      <div class="hd-countdown event-countdown" data-countdown="{{ events.gl_dt_iso }}"></div>
+      <div class="hd-countdown" data-countdown="{{ events.gl_dt_iso }}"></div>
     {% endif %}
     {% if events.gl_next %}
     <div class="hd-event-btns">
@@ -52,13 +72,13 @@
         <input type="hidden" name="next" value="home">
         <button type="submit" name="status" value="attending" class="btn btn-green btn-sm">✓ Attend</button>
       </form>
-      <button type="button" class="btn btn-red btn-sm" onclick="openHAM('guild_league','{{ events.gl_next }}','Guild League')">✕ Absent</button>
+      <button type="button" class="btn danger btn-sm" onclick="openHAM('guild_league','{{ events.gl_next }}','Guild League')">✕ Absent</button>
     </div>
     {% endif %}
   </div>
 
   <!-- WoE Card -->
-  <div class="hd-event-card hd-woe">
+  <div class="hd-event-card">
     <img src="{{ url_for('static', filename='images/deviling.jpg') }}" class="hd-event-mascot" alt="">
     <div class="hd-event-top">
       <span class="hd-event-icon">🏰</span>
@@ -73,7 +93,7 @@
       {% endif %}
     </div>
     {% if events.woe_dt_iso %}
-      <div class="hd-countdown event-countdown" data-countdown="{{ events.woe_dt_iso }}"></div>
+      <div class="hd-countdown" data-countdown="{{ events.woe_dt_iso }}"></div>
     {% endif %}
     {% if events.woe_next %}
     <div class="hd-event-btns">
@@ -84,7 +104,7 @@
         <input type="hidden" name="next" value="home">
         <button type="submit" name="status" value="attending" class="btn btn-green btn-sm">✓ Attend</button>
       </form>
-      <button type="button" class="btn btn-red btn-sm" onclick="openHAM('woe','{{ events.woe_next }}','War of Emperium')">✕ Absent</button>
+      <button type="button" class="btn danger btn-sm" onclick="openHAM('woe','{{ events.woe_next }}','War of Emperium')">✕ Absent</button>
     </div>
     {% endif %}
   </div>
@@ -99,7 +119,7 @@
     <div class="hd-party-header">
       <span class="hd-party-icon">⚔</span>
       <span class="hd-party-title">Guild League</span>
-      {% if gl_party %}<span class="hd-party-name">{{ gl_party.name }}{% if gl_party.is_sub %} <small>(Sub)</small>{% endif %}</span>{% endif %}
+      {% if gl_party %}<span class="hd-party-name">{{ gl_party.name }}{% if gl_party.is_sub %} <span style="font-size:9px;opacity:0.6;">(Sub)</span>{% endif %}</span>{% endif %}
     </div>
     {% if gl_party %}
       <ul class="hd-roster">
@@ -172,16 +192,16 @@
 </div>
 {% endif %}
 
-<!-- Absent modal -->
-<div id="ham-modal" class="modal-overlay" style="display:none;" onclick="if(event.target===this)closeHAM()">
-  <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.5rem;max-width:400px;width:90%;box-shadow:var(--shadow-lg);">
-    <h3 style="font-size:1.1rem;margin-bottom:0.5rem;color:var(--gold);" id="ham-title">Mark Absent</h3>
-    <p style="font-size:0.82rem;color:var(--text-muted);margin-bottom:0.75rem;">Leave an optional note for the admin</p>
-    <textarea id="ham-note" class="form-control mb-2" rows="3" maxlength="300" placeholder="e.g. Out of town, sick, work…" style="resize:none;"></textarea>
-    <div style="font-size:0.72rem;color:var(--text-muted);margin-bottom:1rem;" id="ham-chars">0 / 300</div>
-    <div style="display:flex;gap:0.75rem;flex-wrap:wrap;">
-      <button class="btn btn-red" onclick="confirmHAM()">✕ Confirm Absent</button>
-      <button class="btn btn-outline" onclick="closeHAM()">Cancel</button>
+<!-- ── Absent modal ── -->
+<div id="ham-modal" style="display:none;position:fixed;inset:0;z-index:8000;background:rgba(7,11,20,0.85);backdrop-filter:blur(4px);align-items:center;justify-content:center;" onclick="if(event.target===this)closeHAM()">
+  <div class="modal-box">
+    <h3 id="ham-title">Mark Absent</h3>
+    <p>Leave an optional note for the admin</p>
+    <textarea id="ham-note" class="form-control" rows="3" maxlength="300" placeholder="e.g. Out of town, sick, work…" style="resize:none;width:100%;margin-bottom:6px;"></textarea>
+    <div class="char-count" id="ham-chars">0 / 300</div>
+    <div class="modal-actions">
+      <button class="btn danger btn-sm" onclick="confirmHAM()">✕ Confirm Absent</button>
+      <button class="btn btn-outline btn-sm" onclick="closeHAM()">Cancel</button>
     </div>
   </div>
 </div>
@@ -218,8 +238,7 @@ document.getElementById('ham-note')?.addEventListener('input',function(){
   document.getElementById('ham-chars').textContent=this.value.length+' / 300';
 });
 
-// Countdown timers on home cards (reuse .event-countdown selector from main.js)
-// main.js already handles .event-banner[data-countdown] — home uses .event-countdown[data-countdown]
+// Countdown timers on home cards
 (function(){
   function tick(){
     document.querySelectorAll('.hd-countdown[data-countdown]').forEach(function(el){

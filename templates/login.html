@@ -4,92 +4,66 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Login — DayOne Guild</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
-  <div class="login-split">
+<div class="bg-field"></div>
+<div class="bg-grid"></div>
+<div class="bg-noise"></div>
+<div class="bg-scanlines"></div>
+<div class="bg-vignette"></div>
 
-    <!-- ── Form Side ── -->
-    <div class="login-form-side">
-      <div class="login-card">
+<div class="auth-shell">
+  <div class="auth-overlay-grid"></div>
+  <div class="auth-scanline"></div>
 
-        <div class="logo">
-          <div class="hexagon">D1</div>
-          <span class="guild-name">DayOne</span>
-        </div>
-
-        <h2>Member Login</h2>
-
-        {% if recruitment == 'closed' %}
-        <div style="text-align:center;margin-bottom:1rem;">
-          <div class="recruit-badge closed">🔴 Guild is not currently recruiting</div>
-        </div>
-        {% else %}
-        <div style="text-align:center;margin-bottom:1rem;">
-          <div class="recruit-badge open">🟢 Guild is open to new members!</div>
-        </div>
-        {% endif %}
-
-        {% with messages = get_flashed_messages(with_categories=true) %}
-          {% for category, message in messages %}
-            <div class="alert alert-{{ category }}">{{ message }}</div>
-          {% endfor %}
-        {% endwith %}
-
-        <form method="post" action="{{ url_for('login') }}">
-          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-          <div class="form-group">
-            <label class="form-label">Username</label>
-            <input type="text" name="username" class="form-control" placeholder="Your username" required autofocus>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Password</label>
-            <input type="password" name="password" class="form-control" placeholder="••••••••" required>
-          </div>
-          <button type="submit" class="btn btn-primary btn-lg" style="width:100%;justify-content:center;margin-top:0.25rem;">Sign In</button>
-        </form>
-
-        <div style="text-align:center;margin-top:1rem;">
-          <a href="{{ url_for('forgot_password') }}" style="font-size:0.82rem;color:var(--text-muted);">Forgot your password?</a>
-        </div>
-
-        <div style="text-align:center;margin-top:0.75rem;">
-          <span style="font-size:0.85rem;color:var(--text-muted);">Not a member yet?</span>
-          <a href="{{ url_for('register') }}" style="font-size:0.85rem;margin-left:0.35rem;color:var(--gold);">Register here</a>
-        </div>
-
-        <div style="text-align:center;margin-top:0.75rem;">
-          <a href="{{ url_for('admin_login') }}" style="font-size:0.78rem;color:var(--text-muted);opacity:0.6;">Admin panel →</a>
-        </div>
-
+  <div class="auth-card">
+    <div class="auth-brand">
+      <div class="auth-brand-logo">D1</div>
+      <div>
+        <div class="auth-brand-name">DayOne</div>
+        <div class="auth-brand-sub">Ragnarok Online Guild</div>
       </div>
     </div>
 
-    <!-- ── Art Side ── -->
-    <div class="login-art-side">
-
-      <!-- Background character image -->
-      <div class="login-art-bg" style="background-image:url('{{ url_for('static', filename='images/char-hunter.jpg') }}');"></div>
-
-      <!-- Guild name overlay -->
-      <div class="login-art-guild">
-        <div class="login-art-guild-name">DayOne</div>
-        <div class="login-art-guild-sub">Ragnarok Online Guild</div>
-      </div>
-
-      <!-- Scattered Poring mascots -->
-      <div class="login-art-mascots">
-        <img src="{{ url_for('static', filename='images/poring-angry.jpg') }}"  class="login-poring login-poring-1" alt="">
-        <img src="{{ url_for('static', filename='images/poring-sleep.jpg') }}"  class="login-poring login-poring-2" alt="">
-        <img src="{{ url_for('static', filename='images/poring.jpg') }}"        class="login-poring login-poring-3" alt="">
-        <img src="{{ url_for('static', filename='images/deviling.jpg') }}"      class="login-deviling"              alt="">
-      </div>
-
+    <div class="auth-tabs">
+      <span class="auth-tab active">Login</span>
+      <a href="{{ url_for('register') }}" class="auth-tab">Register</a>
     </div>
 
+    {% if recruitment == 'closed' %}
+    <div class="recruit-badge closed" style="margin-bottom:14px;display:block;">Recruitment Closed</div>
+    {% else %}
+    <div class="recruit-badge open" style="margin-bottom:14px;display:block;">Guild is Recruiting</div>
+    {% endif %}
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for category, message in messages %}
+        <div class="alert alert-{{ category }}">{{ message }}</div>
+      {% endfor %}
+    {% endwith %}
+
+    <form method="post" action="{{ url_for('login') }}" class="auth-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="auth-field">
+        <label>Username</label>
+        <input type="text" name="username" placeholder="Your username" required autofocus autocomplete="username">
+      </div>
+      <div class="auth-field">
+        <label>Password</label>
+        <input type="password" name="password" placeholder="••••••••" required autocomplete="current-password">
+      </div>
+      <button type="submit" class="btn solid" style="width:100%;justify-content:center;margin-top:4px;">Sign In</button>
+    </form>
+
+    <div class="auth-foot">
+      <a href="{{ url_for('forgot_password') }}" style="font-size:11px;color:var(--ink-mute);">Forgot your password?</a>
+      &nbsp;·&nbsp;
+      <a href="{{ url_for('admin_login') }}" style="font-size:11px;color:var(--ink-mute);opacity:0.6;">Admin →</a>
+    </div>
   </div>
-  <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</div>
+
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
 </body>
 </html>

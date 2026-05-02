@@ -25,7 +25,7 @@
       <span style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.07em;color:var(--text-muted);font-weight:700;">Attendance Rate</span>
       <span style="font-size:1.1rem;font-weight:700;
         {% if pct >= 70 %}color:var(--green);
-        {% elif pct >= 40 %}color:#d97706;
+        {% elif pct >= 40 %}color:var(--orange);
         {% else %}color:var(--red);{% endif %}">
         {{ pct }}%
       </span>
@@ -34,7 +34,7 @@
     <div style="flex:1;min-width:120px;height:7px;background:var(--border);border-radius:99px;overflow:hidden;">
       <div style="height:100%;width:{{ pct }}%;border-radius:99px;
         {% if pct >= 70 %}background:var(--green);
-        {% elif pct >= 40 %}background:#d97706;
+        {% elif pct >= 40 %}background:var(--orange);
         {% else %}background:var(--red);{% endif %}
         transition:width 0.4s ease;"></div>
     </div>

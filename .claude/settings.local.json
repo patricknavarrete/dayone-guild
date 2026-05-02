@@ -7,7 +7,10 @@
       "Bash(git commit -m ' *)",
       "Bash(python3 -c \"import ast; ast.parse\\(open\\('app.py'\\).read\\(\\)\\); print\\('OK'\\)\")",
       "Bash(python3 -c \"import ast; ast.parse\\(open\\('app.py', encoding='utf-8'\\).read\\(\\)\\); print\\('OK'\\)\")",
-      "PowerShell(Get-ChildItem \"C:\\\\Users\\\\PC\\\\Desktop\\\\Guild Management\\\\static\\\\images\\\\\" | ForEach-Object { $_.Name })"
+      "PowerShell(Get-ChildItem \"C:\\\\Users\\\\PC\\\\Desktop\\\\Guild Management\\\\static\\\\images\\\\\" | ForEach-Object { $_.Name })",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\PC\\\\Desktop\\\\Guild Management\" -Directory)",
+      "Bash(Select-Object -ExpandProperty Name)",
+      "PowerShell(Get-ChildItem \"C:\\\\Users\\\\PC\\\\Desktop\\\\Guild Management\\\\Guild Management System\\(Created by Claude Design\\)\" -Recurse -File | ForEach-Object { $_.FullName.Replace\\(\"C:\\\\Users\\\\PC\\\\Desktop\\\\Guild Management\\\\Guild Management System\\(Created by Claude Design\\)\\\\\", \"\"\\) })"
     ]
   }
 }

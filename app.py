@@ -1180,7 +1180,7 @@ def admin_officers_remove(officer_id):
 def admin_members():
     db = get_db()
     members = db.execute(
-        """SELECT id, name, username, job, power, photo_path,
+        """SELECT id, name, username, email, job, power, photo_path,
                   power_screenshot_path, equipment_screenshot_path,
                   quasi_stats_screenshot_path, created_at
            FROM members WHERE status='approved' ORDER BY power DESC"""

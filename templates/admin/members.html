@@ -39,11 +39,14 @@
 
     <!-- Info -->
     <div style="min-width:0;">
-      <div style="display:flex;align-items:center;gap:0.6rem;flex-wrap:wrap;margin-bottom:0.3rem;">
+      <div style="display:flex;align-items:center;gap:0.6rem;flex-wrap:wrap;margin-bottom:0.2rem;">
         <h3 style="margin:0;">{{ m.name }}</h3>
         <span style="font-size:0.78rem;color:var(--text-muted);">@{{ m.username }}</span>
         <span style="font-size:0.78rem;color:var(--text-muted);">{{ m.job }}</span>
       </div>
+      {% if m.email %}
+      <div style="font-size:0.75rem;color:var(--ink-mute);margin-bottom:0.25rem;letter-spacing:0.02em;">✉ {{ m.email }}</div>
+      {% endif %}
       <div style="font-size:1.05rem;font-weight:700;color:var(--gold);margin-bottom:0.6rem;">
         ⚡ <span class="power-value">{{ "{:,}".format(m.power) }}</span>
       </div>

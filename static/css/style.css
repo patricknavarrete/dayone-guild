@@ -1365,3 +1365,22 @@ body:has(.auth-shell) { overflow-y: auto; height: auto; }
   .parties-grid { grid-template-columns: 1fr; }
   .admin-parties-grid { grid-template-columns: 1fr; }
 }
+
+/* ── Activity Feed ── */
+.hd-activity-list { display: flex; flex-direction: column; gap: 0; margin-bottom: 1.5rem; }
+.hd-activity-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--line);
+}
+.hd-activity-row:last-child { border-bottom: none; }
+.hd-activity-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--cyan); flex-shrink: 0; margin-top: 5px;
+}
+.hd-activity-body { flex: 1; min-width: 0; display: flex; align-items: baseline; justify-content: space-between; gap: 0.5rem; flex-wrap: wrap; }
+.hd-activity-msg { font-size: 0.83rem; color: var(--ink); text-decoration: none; }
+a.hd-activity-msg:hover { color: var(--cyan); }
+.hd-activity-time { font-size: 0.72rem; color: var(--ink-mute); white-space: nowrap; flex-shrink: 0; }

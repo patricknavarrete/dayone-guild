@@ -1,4 +1,5 @@
 import os
+import re
 import random
 import secrets
 import sqlite3
@@ -42,6 +43,8 @@ VAPID_PUBLIC_KEY  = os.environ.get('VAPID_PUBLIC_KEY', '')
 VAPID_CLAIMS      = {'sub': 'mailto:' + os.environ.get('MAIL_USERNAME', 'admin@dayone.guild')}
 
 SUPPORT_JOBS = {'High Priest', 'Bard', 'Dancer', 'Summoner', 'Apprentice'}
+
+GUIDE_CATEGORIES = ['Farming', 'PvP', 'Class Guide', 'WoE', 'Guild League', 'Equipment', 'General']
 
 PHT = timezone(timedelta(hours=8))
 GL_EVENT_HOUR    = 20   # 8 PM PHT
@@ -98,7 +101,8 @@ def _add_security_headers(response):
         "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
         "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
         "font-src 'self' https://fonts.gstatic.com; "
-        "img-src 'self' data: blob:; "
+        "img-src 'self' data: blob: https://i.ytimg.com; "
+        "frame-src https://www.youtube-nocookie.com https://www.youtube.com; "
         "connect-src 'self'; "
         "worker-src 'self'; "
         "manifest-src 'self';"
@@ -180,6 +184,21 @@ def fmtdate_mini(d):
     if not d:
         return ''
     return d.strftime('%b ') + str(d.day)
+
+
+def _extract_youtube_id(url):
+    if not url:
+        return None
+    m = re.search(
+        r'(?:youtube\.com/watch\?v=|youtu\.be/|youtube\.com/embed/|youtube\.com/shorts/)([a-zA-Z0-9_-]{11})',
+        url
+    )
+    return m.group(1) if m else None
+
+
+@app.template_filter('youtube_id')
+def youtube_id_filter(url):
+    return _extract_youtube_id(url or '') or ''
 
 
 # ── CSRF protection ───────────────────────────────────────────────────────────
@@ -302,6 +321,35 @@ def _migrate_db(db):
             sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             UNIQUE(event_type, event_date, window_label)
         )""",
+        """CREATE TABLE IF NOT EXISTS guides (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            title TEXT NOT NULL,
+            category TEXT NOT NULL DEFAULT 'General',
+            description TEXT DEFAULT '',
+            youtube_url TEXT DEFAULT '',
+            screenshot_path TEXT,
+            submitted_by INTEGER NOT NULL,
+            status TEXT DEFAULT 'pending',
+            rejection_reason TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (submitted_by) REFERENCES members(id)
+        )""",
+        """CREATE TABLE IF NOT EXISTS activity_log (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            event_type TEXT NOT NULL,
+            message TEXT NOT NULL,
+            link TEXT DEFAULT '',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )""",
+        """CREATE TABLE IF NOT EXISTS contribution_log (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            member_id INTEGER NOT NULL,
+            points INTEGER NOT NULL DEFAULT 0,
+            reason TEXT NOT NULL DEFAULT '',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (member_id) REFERENCES members(id)
+        )""",
+        "ALTER TABLE members ADD COLUMN contribution_points INTEGER DEFAULT 0",
     ]
     for sql in migrations:
         try:
@@ -354,6 +402,16 @@ def notify_all_members(db, message, link=''):
     members = db.execute("SELECT id FROM members WHERE status='approved'").fetchall()
     for m in members:
         create_notification(db, m['id'], message, link)
+
+
+def log_activity(db, event_type, message, link=''):
+    try:
+        db.execute(
+            "INSERT INTO activity_log (event_type, message, link) VALUES (?,?,?)",
+            (event_type, message, link)
+        )
+    except Exception:
+        pass
 
 
 def get_activity_badge(db, member_id):
@@ -521,11 +579,19 @@ def home():
     att_rate = att_rate_data['pct']
     member   = db.execute("SELECT name, job, photo_path, power FROM members WHERE id=?", (mid,)).fetchone()
 
+    try:
+        activity_feed = db.execute(
+            "SELECT event_type, message, link, created_at FROM activity_log ORDER BY created_at DESC LIMIT 8"
+        ).fetchall()
+    except Exception:
+        activity_feed = []
+
     return render_template('home.html',
         events=events, gl_att=gl_att, woe_att=woe_att,
         gl_party=gl_party_row, gl_party_members=gl_party_members,
         woe_party=woe_party_row, woe_party_members=woe_party_members,
         announcements=announcements, att_rate=att_rate, member=member,
+        activity_feed=activity_feed,
     )
 
 
@@ -1108,9 +1174,14 @@ def admin_index():
     pu    = db.execute("SELECT COUNT(*) as c FROM pending_updates WHERE status='pending'").fetchone()['c']
     total = db.execute("SELECT COUNT(*) as c FROM members WHERE status='approved'").fetchone()['c']
     ann_count = db.execute("SELECT COUNT(*) as c FROM announcements WHERE is_active=1").fetchone()['c']
+    try:
+        pg = db.execute("SELECT COUNT(*) as c FROM guides WHERE status='pending'").fetchone()['c']
+    except Exception:
+        pg = 0
     recruit = get_recruitment_status(db)
     return render_template('admin/index.html', pending_members=pm, pending_updates=pu,
-                           total_members=total, ann_count=ann_count, recruitment=recruit)
+                           total_members=total, ann_count=ann_count, recruitment=recruit,
+                           pending_guides=pg)
 
 
 # ── Admin Officers ───────────────────────────────────────────────────────────
@@ -1182,7 +1253,7 @@ def admin_members():
     members = db.execute(
         """SELECT id, name, username, email, job, power, photo_path,
                   power_screenshot_path, equipment_screenshot_path,
-                  quasi_stats_screenshot_path, created_at
+                  quasi_stats_screenshot_path, contribution_points, created_at
            FROM members WHERE status='approved' ORDER BY power DESC"""
     ).fetchall()
     return render_template('admin/members.html', members=members)
@@ -1221,8 +1292,11 @@ def admin_approvals():
 @csrf_protect
 def admin_approve(member_id):
     db = get_db()
+    member = db.execute("SELECT name FROM members WHERE id=?", (member_id,)).fetchone()
     db.execute("UPDATE members SET status='approved', rejection_reason=NULL WHERE id=?", (member_id,))
     create_notification(db, member_id, '🎉 Your registration has been approved! Welcome to DayOne.', '/profile')
+    if member:
+        log_activity(db, 'member_joined', f'⚔ {member["name"]} joined the guild!', '/roster')
     db.commit()
     flash('Member approved.', 'success')
     return redirect(url_for('admin_approvals'))
@@ -1781,6 +1855,7 @@ def admin_announcements():
                 (title, body, is_pinned, is_ticker)
             )
             notify_all_members(db, f'📢 New announcement: {title}', '/announcements')
+            log_activity(db, 'announcement', f'📢 New announcement: {title}', '/announcements')
             db.commit()
             flash('Announcement posted.', 'success')
         return redirect(url_for('admin_announcements'))
@@ -1860,7 +1935,7 @@ def leaderboard():
     today = datetime.now(PHT).date()
     cutoff = today - timedelta(weeks=4)
     members = db.execute(
-        "SELECT id, name, job, photo_path FROM members WHERE status='approved' ORDER BY name"
+        "SELECT id, name, job, photo_path, contribution_points FROM members WHERE status='approved' ORDER BY name"
     ).fetchall()
     board = []
     for m in members:
@@ -1873,7 +1948,8 @@ def leaderboard():
         pct      = round(attended / total * 100) if total else 0
         board.append({'id': m['id'], 'name': m['name'], 'job': m['job'],
                       'photo_path': m['photo_path'],
-                      'attended': attended, 'total': total, 'pct': pct})
+                      'attended': attended, 'total': total, 'pct': pct,
+                      'contribution_points': m['contribution_points'] or 0})
     board.sort(key=lambda x: (-x['pct'], -x['attended'], x['name']))
     return render_template('leaderboard.html', board=board)
 
@@ -2141,6 +2217,223 @@ def service_worker():
     resp.headers['Content-Type']        = 'application/javascript'
     resp.headers['Service-Worker-Allowed'] = '/'
     return resp
+
+
+# ── Guides & Resources ────────────────────────────────────────────────────────
+
+@app.route('/guides')
+@login_required
+def guides():
+    db = get_db()
+    selected_cat = request.args.get('category', '').strip()
+    if selected_cat and selected_cat in GUIDE_CATEGORIES:
+        rows = db.execute(
+            """SELECT g.*, m.name AS submitter_name
+               FROM guides g JOIN members m ON m.id=g.submitted_by
+               WHERE g.status='approved' AND g.category=?
+               ORDER BY g.created_at DESC""",
+            (selected_cat,)
+        ).fetchall()
+    else:
+        rows = db.execute(
+            """SELECT g.*, m.name AS submitter_name
+               FROM guides g JOIN members m ON m.id=g.submitted_by
+               WHERE g.status='approved'
+               ORDER BY g.created_at DESC"""
+        ).fetchall()
+    my_pending = db.execute(
+        "SELECT COUNT(*) as c FROM guides WHERE submitted_by=? AND status='pending'",
+        (session['member_id'],)
+    ).fetchone()['c']
+    return render_template('guides.html', guides=rows, categories=GUIDE_CATEGORIES,
+                           selected_cat=selected_cat, my_pending=my_pending)
+
+
+@app.route('/guides/submit', methods=['POST'])
+@login_required
+@csrf_protect
+def guides_submit():
+    title       = request.form.get('title', '').strip()[:120]
+    category    = request.form.get('category', '').strip()
+    description = request.form.get('description', '').strip()[:500]
+    youtube_url = request.form.get('youtube_url', '').strip()[:300]
+    if not title:
+        flash('Guide title is required.', 'error')
+        return redirect(url_for('guides'))
+    if category not in GUIDE_CATEGORIES:
+        flash('Invalid category.', 'error')
+        return redirect(url_for('guides'))
+    if youtube_url and not _extract_youtube_id(youtube_url):
+        flash('Invalid YouTube URL. Please paste a valid YouTube link.', 'error')
+        return redirect(url_for('guides'))
+    screenshot_path = save_upload('screenshot')
+    if not youtube_url and not screenshot_path:
+        flash('Please provide a YouTube link or upload a screenshot.', 'error')
+        return redirect(url_for('guides'))
+    db = get_db()
+    db.execute(
+        """INSERT INTO guides (title, category, description, youtube_url, screenshot_path, submitted_by)
+           VALUES (?,?,?,?,?,?)""",
+        (title, category, description, youtube_url, screenshot_path, session['member_id'])
+    )
+    db.commit()
+    flash('Guide submitted! It will appear once approved by an admin.', 'success')
+    return redirect(url_for('guides'))
+
+
+@app.route('/admin/guides')
+@admin_required
+def admin_guides():
+    db = get_db()
+    pending = db.execute(
+        """SELECT g.*, m.name AS submitter_name
+           FROM guides g JOIN members m ON m.id=g.submitted_by
+           WHERE g.status='pending' ORDER BY g.created_at ASC"""
+    ).fetchall()
+    approved = db.execute(
+        """SELECT g.*, m.name AS submitter_name
+           FROM guides g JOIN members m ON m.id=g.submitted_by
+           WHERE g.status='approved' ORDER BY g.created_at DESC LIMIT 60"""
+    ).fetchall()
+    return render_template('admin/guides.html', pending=pending, approved=approved)
+
+
+@app.route('/admin/guides/<int:guide_id>/approve', methods=['POST'])
+@admin_required
+@csrf_protect
+def admin_guides_approve(guide_id):
+    db = get_db()
+    guide = db.execute("SELECT * FROM guides WHERE id=?", (guide_id,)).fetchone()
+    if not guide:
+        flash('Guide not found.', 'error')
+        return redirect(url_for('admin_guides'))
+    if guide['status'] == 'approved':
+        flash('Guide is already approved.', 'warning')
+        return redirect(url_for('admin_guides'))
+    db.execute("UPDATE guides SET status='approved', rejection_reason=NULL WHERE id=?", (guide_id,))
+    create_notification(db, guide['submitted_by'],
+                        f'✅ Your guide "{guide["title"]}" has been approved!', '/guides')
+    notify_all_members(db, f'📚 New guide available: {guide["title"]}', '/guides')
+    log_activity(db, 'guide_approved', f'📚 New guide: {guide["title"]}', '/guides')
+    db.execute(
+        "UPDATE members SET contribution_points = contribution_points + 1 WHERE id=?",
+        (guide['submitted_by'],)
+    )
+    db.execute(
+        "INSERT INTO contribution_log (member_id, points, reason) VALUES (?,?,?)",
+        (guide['submitted_by'], 1, f'Guide approved: {guide["title"]}')
+    )
+    db.commit()
+    flash('Guide approved and +1 contribution point awarded.', 'success')
+    return redirect(url_for('admin_guides'))
+
+
+@app.route('/admin/guides/<int:guide_id>/reject', methods=['POST'])
+@admin_required
+@csrf_protect
+def admin_guides_reject(guide_id):
+    reason = (request.form.get('reason', '').strip() or 'No reason provided.')[:500]
+    db = get_db()
+    guide = db.execute("SELECT * FROM guides WHERE id=?", (guide_id,)).fetchone()
+    if not guide:
+        flash('Guide not found.', 'error')
+        return redirect(url_for('admin_guides'))
+    db.execute("UPDATE guides SET status='rejected', rejection_reason=? WHERE id=?",
+               (reason, guide_id))
+    create_notification(db, guide['submitted_by'],
+                        f'❌ Your guide "{guide["title"]}" was not approved: {reason}', '/guides')
+    db.commit()
+    flash('Guide rejected.', 'success')
+    return redirect(url_for('admin_guides'))
+
+
+@app.route('/admin/guides/<int:guide_id>/delete', methods=['POST'])
+@admin_required
+@csrf_protect
+def admin_guides_delete(guide_id):
+    db = get_db()
+    guide = db.execute("SELECT screenshot_path FROM guides WHERE id=?", (guide_id,)).fetchone()
+    if guide and guide['screenshot_path']:
+        try:
+            os.remove(os.path.join('static', guide['screenshot_path']))
+        except Exception:
+            pass
+    db.execute("DELETE FROM guides WHERE id=?", (guide_id,))
+    db.commit()
+    flash('Guide deleted.', 'success')
+    return redirect(url_for('admin_guides'))
+
+
+# ── Guild Rules ───────────────────────────────────────────────────────────────
+
+@app.route('/rules')
+@login_required
+def rules():
+    db = get_db()
+    row = db.execute("SELECT value FROM settings WHERE key='guild_rules'").fetchone()
+    content = row['value'] if row else ''
+    return render_template('rules.html', content=content)
+
+
+@app.route('/admin/rules', methods=['GET', 'POST'])
+@admin_required
+@csrf_protect
+def admin_rules():
+    db = get_db()
+    if request.method == 'POST':
+        content = request.form.get('content', '').strip()[:15000]
+        db.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('guild_rules', ?)", (content,))
+        db.commit()
+        flash('Guild rules updated.', 'success')
+        return redirect(url_for('admin_rules'))
+    row = db.execute("SELECT value FROM settings WHERE key='guild_rules'").fetchone()
+    content = row['value'] if row else ''
+    return render_template('admin/rules.html', content=content)
+
+
+# ── Contribution Points ───────────────────────────────────────────────────────
+
+@app.route('/admin/members/<int:member_id>/award-points', methods=['POST'])
+@admin_required
+@csrf_protect
+def admin_award_points(member_id):
+    points_raw = request.form.get('points', '0').strip()
+    reason     = request.form.get('reason', '').strip()[:200]
+    try:
+        points = int(points_raw)
+    except ValueError:
+        flash('Points must be a whole number.', 'error')
+        return redirect(url_for('admin_members'))
+    if points == 0:
+        flash('Points cannot be zero.', 'error')
+        return redirect(url_for('admin_members'))
+    if not (-999 <= points <= 999):
+        flash('Points must be between -999 and 999 per award.', 'error')
+        return redirect(url_for('admin_members'))
+    db = get_db()
+    member = db.execute(
+        "SELECT id, name FROM members WHERE id=? AND status='approved'", (member_id,)
+    ).fetchone()
+    if not member:
+        flash('Member not found.', 'error')
+        return redirect(url_for('admin_members'))
+    db.execute(
+        "UPDATE members SET contribution_points = contribution_points + ? WHERE id=?",
+        (points, member_id)
+    )
+    db.execute(
+        "INSERT INTO contribution_log (member_id, points, reason) VALUES (?,?,?)",
+        (member_id, points, reason or 'Points awarded by admin')
+    )
+    if points > 0:
+        create_notification(
+            db, member_id,
+            f'⭐ You received {points} contribution point{"s" if abs(points) != 1 else ""}! {reason}'.strip(),
+            '/leaderboard'
+        )
+    db.commit()
+    flash(f'Awarded {points:+d} points to {member["name"]}.', 'success')
+    return redirect(url_for('admin_members'))
 
 
 # ── Init & Run ────────────────────────────────────────────────────────────────

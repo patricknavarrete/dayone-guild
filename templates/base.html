@@ -98,6 +98,12 @@
       <a href="{{ url_for('announcements') }}" class="nav-item{% if request.endpoint == 'announcements' %} active{% endif %}">
         <span class="nav-icon">📢</span><span class="nav-label">News</span>
       </a>
+      <a href="{{ url_for('guides') }}" class="nav-item{% if request.endpoint == 'guides' %} active{% endif %}">
+        <span class="nav-icon">📚</span><span class="nav-label">Guides</span>
+      </a>
+      <a href="{{ url_for('rules') }}" class="nav-item{% if request.endpoint == 'rules' %} active{% endif %}">
+        <span class="nav-icon">📜</span><span class="nav-label">Guild Rules</span>
+      </a>
       <a href="{{ url_for('calendar_view') }}" class="nav-item{% if request.endpoint == 'calendar_view' %} active{% endif %}">
         <span class="nav-icon">◫</span><span class="nav-label">Calendar</span>
       </a>

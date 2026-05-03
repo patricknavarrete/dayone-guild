@@ -15,6 +15,7 @@
         <th style="padding:0.6rem 0.75rem;text-align:left;font-size:0.72rem;text-transform:uppercase;letter-spacing:0.07em;color:var(--text-muted);border-bottom:1px solid var(--border);">Job</th>
         <th style="padding:0.6rem 0.75rem;text-align:center;font-size:0.72rem;text-transform:uppercase;letter-spacing:0.07em;color:var(--text-muted);border-bottom:1px solid var(--border);">Events</th>
         <th style="padding:0.6rem 0.75rem;text-align:left;font-size:0.72rem;text-transform:uppercase;letter-spacing:0.07em;color:var(--text-muted);border-bottom:1px solid var(--border);min-width:160px;">Attendance</th>
+        <th style="padding:0.6rem 0.75rem;text-align:center;font-size:0.72rem;text-transform:uppercase;letter-spacing:0.07em;color:var(--text-muted);border-bottom:1px solid var(--border);">⭐ Points</th>
       </tr>
     </thead>
     <tbody>
@@ -74,6 +75,15 @@
                 transition:width 0.4s ease;"></div>
             </div>
           </div>
+        </td>
+
+        <!-- Contribution Points -->
+        <td style="padding:0.65rem 0.75rem;text-align:center;">
+          {% if entry.contribution_points > 0 %}
+            <span style="font-weight:700;color:var(--yellow);font-size:0.9rem;">{{ entry.contribution_points }}</span>
+          {% else %}
+            <span style="color:var(--text-muted);font-size:0.8rem;">—</span>
+          {% endif %}
         </td>
 
       </tr>

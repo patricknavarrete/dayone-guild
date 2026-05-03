@@ -13,6 +13,10 @@
     <div class="stat-number">{{ pending_updates }}</div>
     <div class="stat-label">Pending Updates</div>
   </div>
+  <div class="dashboard-stat {% if pending_guides > 0 %}alert-stat{% endif %}">
+    <div class="stat-number">{{ pending_guides }}</div>
+    <div class="stat-label">Pending Guides</div>
+  </div>
   <div class="dashboard-stat">
     <div class="stat-number">{{ total_members }}</div>
     <div class="stat-label">Approved Members</div>
@@ -28,6 +32,13 @@
   <a href="{{ url_for('admin_updates') }}" class="quick-link-card">
     🔄 Update Requests
     {% if pending_updates > 0 %}<span class="badge badge-pending">{{ pending_updates }}</span>{% endif %}
+  </a>
+  <a href="{{ url_for('admin_guides') }}" class="quick-link-card">
+    📚 Guides
+    {% if pending_guides > 0 %}<span class="badge badge-pending">{{ pending_guides }}</span>{% endif %}
+  </a>
+  <a href="{{ url_for('admin_rules') }}" class="quick-link-card">
+    📜 Guild Rules
   </a>
   <a href="{{ url_for('admin_attendance') }}" class="quick-link-card">
     📋 Attendance Overview

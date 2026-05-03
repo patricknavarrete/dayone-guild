@@ -192,6 +192,26 @@
 </div>
 {% endif %}
 
+<!-- ── Activity Feed ── -->
+{% if activity_feed %}
+<div class="hd-section-label">Recent Activity</div>
+<div class="hd-activity-list">
+  {% for item in activity_feed %}
+  <div class="hd-activity-row">
+    <div class="hd-activity-dot"></div>
+    <div class="hd-activity-body">
+      {% if item.link %}
+        <a href="{{ item.link }}" class="hd-activity-msg">{{ item.message }}</a>
+      {% else %}
+        <span class="hd-activity-msg">{{ item.message }}</span>
+      {% endif %}
+      <span class="hd-activity-time">{{ item.created_at[:10] }}</span>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
 <!-- ── Absent modal ── -->
 <div id="ham-modal" style="display:none;position:fixed;inset:0;z-index:9100;background:rgba(7,11,20,0.85);backdrop-filter:blur(4px);align-items:center;justify-content:center;" onclick="if(event.target===this)closeHAM()">
   <div class="modal-box">

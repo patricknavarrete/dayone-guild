@@ -1,0 +1,158 @@
+{% extends 'admin/base.html' %}
+{% block title %}Guides — DayOne Admin{% endblock %}
+
+{% block content %}
+<h1 class="page-title">📚 Guides &amp; Resources</h1>
+
+<!-- ── Pending Guides ── -->
+{% if pending %}
+<div class="section-header" style="margin-bottom:0.75rem;">
+  <h2 style="font-size:1.1rem;margin:0;">Pending Review</h2>
+  <span class="badge badge-pending">{{ pending|length }}</span>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:1rem;margin-bottom:2.5rem;">
+  {% for g in pending %}
+  <div class="approval-card" style="flex-direction:column;gap:0;">
+
+    <!-- Top row: info + actions -->
+    <div style="display:flex;align-items:flex-start;gap:1rem;flex-wrap:wrap;">
+      <div style="flex:1;min-width:0;">
+        <div style="display:flex;align-items:center;gap:0.6rem;flex-wrap:wrap;margin-bottom:0.3rem;">
+          <h3 style="margin:0;font-size:0.95rem;">{{ g.title }}</h3>
+          <span class="guide-cat-badge" data-cat="{{ g.category }}">{{ g.category }}</span>
+        </div>
+        <div style="font-size:0.78rem;color:var(--text-muted);margin-bottom:0.3rem;">
+          Submitted by <strong>{{ g.submitter_name }}</strong> · {{ g.created_at[:10] }}
+        </div>
+        {% if g.description %}
+        <p style="margin:0 0 0.5rem;font-size:0.82rem;color:var(--ink-dim);">{{ g.description }}</p>
+        {% endif %}
+        {% if g.youtube_url %}
+        <div style="font-size:0.78rem;color:var(--cyan);word-break:break-all;">🔗 {{ g.youtube_url }}</div>
+        {% endif %}
+      </div>
+
+      <!-- Action buttons -->
+      <div style="display:flex;flex-direction:column;gap:0.4rem;flex-shrink:0;">
+        <form method="post" action="{{ url_for('admin_guides_approve', guide_id=g.id) }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="submit" class="btn btn-green btn-sm" style="width:100%;">✓ Approve</button>
+        </form>
+        <button type="button" class="btn btn-red btn-sm"
+                data-gid="{{ g.id }}"
+                data-gtitle="{{ g.title | e }}"
+                onclick="openRejectModal(this.dataset.gid, this.dataset.gtitle)">✕ Reject</button>
+      </div>
+    </div>
+
+    <!-- Preview -->
+    {% set vid_id = g.youtube_url | youtube_id %}
+    {% if vid_id %}
+    <div style="margin-top:0.75rem;position:relative;width:100%;max-width:480px;padding-top:min(270px, 56.25%);background:#0a0e1a;border-radius:6px;overflow:hidden;">
+      <iframe
+        src="https://www.youtube-nocookie.com/embed/{{ vid_id }}"
+        title="{{ g.title | e }}"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+        allowfullscreen loading="lazy"
+        style="position:absolute;top:0;left:0;width:100%;height:100%;border:none;">
+      </iframe>
+    </div>
+    {% elif g.screenshot_path %}
+    <img src="{{ url_for('static', filename=g.screenshot_path) }}"
+         alt="{{ g.title | e }}"
+         class="lightbox-trigger"
+         style="margin-top:0.75rem;max-height:200px;object-fit:contain;border-radius:6px;cursor:pointer;border:1px solid var(--border);">
+    {% endif %}
+
+  </div>
+  {% endfor %}
+</div>
+
+{% else %}
+<div class="alert alert-success" style="margin-bottom:2rem;font-size:0.85rem;">
+  ✓ No pending guides — all caught up!
+</div>
+{% endif %}
+
+<!-- ── Approved Guides ── -->
+<h2 style="font-size:1.1rem;margin-bottom:0.75rem;">Approved Guides</h2>
+{% if approved %}
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,340px),1fr));gap:0.75rem;">
+  {% for g in approved %}
+  <div class="card" style="padding:12px;display:flex;flex-direction:column;gap:6px;">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:0.5rem;">
+      <div>
+        <div style="font-weight:700;font-size:0.88rem;margin-bottom:2px;">{{ g.title }}</div>
+        <div style="font-size:0.72rem;color:var(--text-muted);">{{ g.category }} · by {{ g.submitter_name }} · {{ g.created_at[:10] }}</div>
+      </div>
+      <form method="post" action="{{ url_for('admin_guides_delete', guide_id=g.id) }}"
+            onsubmit="return confirm('Delete this guide?')">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="btn btn-red btn-xs">✕</button>
+      </form>
+    </div>
+    {% if g.youtube_url %}
+    <div style="font-size:0.72rem;color:var(--cyan);word-break:break-all;">🔗 {{ g.youtube_url[:60] }}{% if g.youtube_url|length > 60 %}…{% endif %}</div>
+    {% endif %}
+    {% if g.screenshot_path %}
+    <img src="{{ url_for('static', filename=g.screenshot_path) }}"
+         class="lightbox-trigger"
+         style="max-height:120px;object-fit:contain;border-radius:4px;cursor:pointer;border:1px solid var(--border);">
+    {% endif %}
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="empty-state" style="padding:2rem 1rem;">
+  <p>No approved guides yet.</p>
+</div>
+{% endif %}
+
+<!-- ── Reject Modal ── -->
+<div id="reject-modal" style="display:none;position:fixed;inset:0;z-index:9100;background:rgba(7,11,20,0.88);backdrop-filter:blur(4px);align-items:center;justify-content:center;padding:1rem;" onclick="if(event.target===this)closeRejectModal()">
+  <div class="modal-box" style="width:100%;max-width:420px;box-sizing:border-box;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.75rem;">
+      <h3 style="margin:0;font-size:1rem;">Reject Guide</h3>
+      <button type="button" class="btn btn-outline btn-sm" onclick="closeRejectModal()">✕</button>
+    </div>
+    <p id="reject-modal-title" style="font-size:0.85rem;color:var(--text-muted);margin-bottom:0.75rem;"></p>
+    <form id="reject-form" method="post" action="">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="form-group">
+        <label style="font-size:0.78rem;color:var(--text-muted);">Reason (optional)</label>
+        <textarea name="reason" class="form-control" rows="2" maxlength="300" placeholder="Tell the member why it was rejected…" style="resize:none;"></textarea>
+      </div>
+      <div style="display:flex;gap:0.5rem;justify-content:flex-end;margin-top:0.75rem;">
+        <button type="button" class="btn btn-outline btn-sm" onclick="closeRejectModal()">Cancel</button>
+        <button type="submit" class="btn btn-red btn-sm">✕ Confirm Reject</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+function openRejectModal(id, title) {
+  document.getElementById('reject-modal-title').textContent = '"' + title + '"';
+  document.getElementById('reject-form').action = '/admin/guides/' + id + '/reject';
+  document.getElementById('reject-modal').style.display = 'flex';
+}
+function closeRejectModal() {
+  document.getElementById('reject-modal').style.display = 'none';
+}
+</script>
+<style>
+.guide-cat-badge {
+  flex-shrink:0;font-size:0.68rem;padding:2px 8px;border-radius:99px;
+  border:1px solid var(--cyan);color:var(--cyan);white-space:nowrap;letter-spacing:0.04em;
+}
+.guide-cat-badge[data-cat="Farming"]     { border-color:var(--green);  color:var(--green); }
+.guide-cat-badge[data-cat="PvP"]         { border-color:var(--red);    color:var(--red); }
+.guide-cat-badge[data-cat="WoE"]         { border-color:var(--magenta);color:var(--magenta); }
+.guide-cat-badge[data-cat="Guild League"]{ border-color:var(--yellow); color:var(--yellow); }
+.guide-cat-badge[data-cat="Equipment"]   { border-color:var(--orange); color:var(--orange); }
+</style>
+{% endblock %}

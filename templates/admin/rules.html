@@ -1,0 +1,26 @@
+{% extends 'admin/base.html' %}
+{% block title %}Guild Rules — DayOne Admin{% endblock %}
+
+{% block content %}
+<h1 class="page-title">📜 Guild Rules</h1>
+<p style="font-size:0.85rem;color:var(--text-muted);margin-bottom:1.25rem;">
+  Write your guild rules, requirements, and expectations here. Members can read this at <strong>/rules</strong>.
+</p>
+
+<form method="post" action="{{ url_for('admin_rules') }}">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <div class="form-group">
+    <label style="font-size:0.78rem;color:var(--text-muted);">Rules Content</label>
+    <textarea name="content" class="form-control"
+              rows="18"
+              placeholder="Write your guild rules here. Use plain text. Each line break will be preserved."
+              style="resize:vertical;font-family:inherit;line-height:1.7;">{{ content }}</textarea>
+  </div>
+  <div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;">
+    <button type="submit" class="btn btn-primary btn-sm">💾 Save Rules</button>
+    {% if content %}
+    <a href="{{ url_for('rules') }}" class="btn btn-outline btn-sm" target="_blank">👁 Preview</a>
+    {% endif %}
+  </div>
+</form>
+{% endblock %}

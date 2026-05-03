@@ -1,0 +1,17 @@
+{% extends 'base.html' %}
+{% block title %}Guild Rules — DayOne{% endblock %}
+
+{% block content %}
+<h1 class="page-title">📜 Guild Rules</h1>
+
+{% if content %}
+<div class="card" style="padding:1.5rem;">
+  <div style="font-size:0.9rem;line-height:1.9;color:var(--ink);white-space:pre-wrap;word-break:break-word;">{{ content }}</div>
+</div>
+{% else %}
+<div class="empty-state">
+  <p>No guild rules have been posted yet.</p>
+  <p class="mt-1" style="font-size:0.85rem;">Check back later or ask an admin.</p>
+</div>
+{% endif %}
+{% endblock %}
